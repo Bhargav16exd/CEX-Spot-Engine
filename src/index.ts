@@ -1,4 +1,5 @@
-import { dot } from "node:test/reporters";
+import { initBalancesBackup, loadBalanceBackup, loadOrderBookBackup } from "./memory-store/backup/backup-store.js";
+import BALANCE_STORE from "./memory-store/balance/balance-store.js";
 import { connectRedis, publisher, subscriber } from "./modules/queue/queue-client.js";
 import engineRequestHandler from "./modules/request-handler/request-hanlder.js";
 import type { EngineRequestType, EngineResponseType } from "./types/engine-types.js";
@@ -12,21 +13,21 @@ connectRedis();
 const ENGINE_REQUEST_QUEUE = `engine-request-queue`;
 
 const sendResponse = async (queue:string, payload:EngineResponseType) => {
-	console.log("got res to send",payload)
 	await publisher.lPush(queue, JSON.stringify(payload));
 }
+
+loadBalanceBackup().then(()=>{
+	initBalancesBackup();
+});
 
 //process request
 for(;;){
 
 	const entity = await subscriber.brPop(ENGINE_REQUEST_QUEUE, 5);
-
-	console.log(entity)
+	
 	if(!entity) continue;
 
 	const parsedRequest = JSON.parse(entity.element) as EngineRequestType;
-
-	console.log("REQUEST RECIEVED",parsedRequest);
 
 	try {
 		const engineResponse = engineRequestHandler(parsedRequest);
@@ -37,7 +38,10 @@ for(;;){
 			data:engineResponse
 		}
 
+		console.log("engine response",engineResponse);
+
 		await sendResponse(parsedRequest.responseQueue, payload);
+
 	} catch (error) {
 		await sendResponse(parsedRequest.responseQueue,{
 			transactionId:parsedRequest.transactionId,

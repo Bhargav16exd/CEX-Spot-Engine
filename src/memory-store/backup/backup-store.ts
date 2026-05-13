@@ -1,4 +1,4 @@
-import fs from "fs/promises"
+import fs from "fs"
 import BALANCE_STORE, { putBackupInBalanceStore } from "../balance/balance-store.js";
 import { fileURLToPath } from "url";
 import path from "path";
@@ -51,7 +51,7 @@ const backupStoreEntityHelper = async (entity:any, storeTypeName:storeType) => {
     }
 
     const stringifyEntity = JSON.stringify(entity);
-    await fs.writeFile(filePath,stringifyEntity,'utf-8')
+    fs.writeFileSync(filePath,stringifyEntity,'utf-8')
 
 }
 
@@ -87,7 +87,8 @@ const initLoadBackup = async (storeTypeName:storeType) => {
         return
     }
 
-    const stringifiedData = await fs.readFile(filePath,'utf-8');
+    const stringifiedData = fs.readFileSync(filePath,'utf-8');
+    console.log(stringifiedData)
     const shallowBackupCopy = JSON.parse(stringifiedData);
 
     if(storeTypeName == storeType.BALANCE){

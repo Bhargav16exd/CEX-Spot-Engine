@@ -1,9 +1,23 @@
 import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../../../engine/src/memory-store/orderbook/orderbook-store.js"
-import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserLockedStocks, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForAskOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserLockedStocks, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../../../engine/src/memory-store/balance/balance-store.js"
+import BALANCE_STORE, { readBalanceStoreUserLockedStocks, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForAskOrder, updateBalanceStoreUserLockedStocks } from "../../memory-store/balance/balance-store.js";
 import { OrderType } from "./bid.module.js"
 
+export type OrderBodyType = {
+	userId:string,
+	stockSymbol:string,
+	side:string,
+	type:string,
+	price:number,
+	quantity:number
+}
 
-export function hanldeOrderSideAsk(req:Request, res:Response , userId:string, stockSymbol:string, side:string, type:string, price:number, quantity:number){
+export function hanldeOrderSideAsk(body:OrderBodyType):any{
+
+	const {userId, stockSymbol, side, type, price, quantity} = body;
+
+	if(!userId || !stockSymbol || !side || !type || !price || !quantity ){
+		throw new Error("Invalid Inputs");
+	}
 
 	//if that stock doesnt exist in order book create an entry for that
 	if(!ORDERBOOK_STORE[stockSymbol]){
@@ -23,10 +37,13 @@ export function hanldeOrderSideAsk(req:Request, res:Response , userId:string, st
 		//retry and throw error
 	}
 
+	console.log(userAvailableStock);
+
 	//if user own quantity is less than order throw error
 	if(quantity > userAvailableStock){
 		//error queue
-		//throw new HttpErrorResponse(400, false, "Insufficient Quantity");
+		console.log("hi")
+		throw new Error("Insufficient Quantity");
 	}
 
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].stock[stockSymbol]){
@@ -60,13 +77,13 @@ export function hanldeOrderSideAsk(req:Request, res:Response , userId:string, st
 				ORDERBOOK_STORE[stockSymbol].ask[price].totalQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].totalQuantity + quantity;
 				ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity + quantity;
 				//tbd push in response queue
-				//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE}));
+				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 			}
 			//else create a new ask
 			else{
 				actionCreateAsk(userId, stockSymbol, quantity ,price);
 				//tbd push in response queue
-				//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE}));
+				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 			}
 		}
 		/*
@@ -74,11 +91,11 @@ export function hanldeOrderSideAsk(req:Request, res:Response , userId:string, st
 		  ACTION - WE PUT ASK IN ORDERBOOK OR DELETE WHOLE BID IF REQUIRED
 		*/
 
-		handlePriceAvailableForOrder(req, res, userId, stockSymbol, side, type, price, quantity);
+		return handlePriceAvailableForOrder(userId, stockSymbol, side, type, price, quantity);
 	}
 
 	if(type == OrderType.MARKET){
-		handleOrderTypeMarket(req, res, userId, stockSymbol, side, type , price, quantity);
+		handleOrderTypeMarket(userId, stockSymbol, side, type , price, quantity);
 	}
 }
 
@@ -114,7 +131,7 @@ const actionCreateAsk = (userId:string , stockSymbol:string, quantity:number, pr
 	return true
 }
 
-const handlePriceAvailableForOrder = (req:Request, res:Response , userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
 
 	if(!ORDERBOOK_STORE[stockSymbol]) return;
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].stock[stockSymbol]) return;
@@ -223,10 +240,10 @@ const handlePriceAvailableForOrder = (req:Request, res:Response , userId:string,
 		count--;
 	}
 	//tbd push in response queue
-	//return res.json(new HttpSuccessResponse(200, true, "Order Placed", {orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE}));
+	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 }
 
-const handleOrderTypeMarket = (req:Request, res:Response , userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
 
 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]) return;
 	if(!ORDERBOOK_STORE[stockSymbol]) return;

@@ -1,5 +1,6 @@
 import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../../../engine/src/memory-store/orderbook/orderbook-store.js";
 import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../../../engine/src/memory-store/balance/balance-store.js";
+import type { OrderBodyType } from "./ask.module.js";
 
 
 export enum OrderType {
@@ -7,7 +8,13 @@ export enum OrderType {
 	MARKET="MARKET"
 }
 
-export function hanldeOrderSideBid(req:Request, res:Response , userId:string, stockSymbol:string, side:string, type:string, price:number, quantity:number){
+export function hanldeOrderSideBid(body:OrderBodyType):any{
+
+	const {userId, stockSymbol, side, type, price, quantity} = body;
+
+	if(!userId || !stockSymbol || !side || !type || !price || !quantity ){
+		throw new Error("Invalid Inputs");
+	}
 
 	if(!ORDERBOOK_STORE[stockSymbol]){
 			ORDERBOOK_STORE[stockSymbol] = {
@@ -26,7 +33,7 @@ export function hanldeOrderSideBid(req:Request, res:Response , userId:string, st
 
 	if((price * quantity) > userAvailableBalance){
 		//tbd
-		//push error in queue
+		throw new Error("Insufficiety Balance");
 	}
 
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"]) return
@@ -52,13 +59,13 @@ export function hanldeOrderSideBid(req:Request, res:Response , userId:string, st
 				ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity = ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity + quantity;
 				//tbd
 				//push in queue
-				//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE}));
+				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 			}
 			//if there exist no bid then create one
 			else{
 				actionCreateBid(userId, stockSymbol, quantity, price);
 				//tbd push in queue
-				//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE}));
+				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 			}
 		}
 
@@ -67,12 +74,12 @@ export function hanldeOrderSideBid(req:Request, res:Response , userId:string, st
 		  ACTION - WE PUT BID IN ORDERBOOK OR DELETE WHOLE BID IF REQUIRED
 		*/
 
-		handlePriceAvailableForOrderTypeLimit(req, res, userId,  stockSymbol, side, type, price, quantity);
+		return handlePriceAvailableForOrderTypeLimit(userId,  stockSymbol, side, type, price, quantity);
 	}
 
 
 	if(type == OrderType.MARKET){
-		handleOrderTypeMarket(req, res, userId, stockSymbol, side, type, price, quantity);
+		handleOrderTypeMarket(userId, stockSymbol, side, type, price, quantity);
 	}
 }
 
@@ -107,7 +114,7 @@ const actionCreateBid = (userId:string , stockSymbol:string, quantity:number, pr
 	return true
 }
 
-const handlePriceAvailableForOrderTypeLimit = (req:Request, res:Response , userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
 
 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]) return false;
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"]) return;
@@ -222,10 +229,12 @@ const handlePriceAvailableForOrderTypeLimit = (req:Request, res:Response , userI
 	}
 
 	//tbd push in queue
+	console.log("in bid",{orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE})
+	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 	//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE}));
 }
 
-const handleOrderTypeMarket = (req:Request, res:Response , userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
 
 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]) return;
 	if(!BALANCE_STORE[userId] ||!BALANCE_STORE[userId]?.balance["inr"] || !BALANCE_STORE[userId].stock[stockSymbol]) return;

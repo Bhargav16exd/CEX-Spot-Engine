@@ -1,0 +1,1 @@
+{"11":{"balance":{"inr":{"total":11370,"locked":0}},"stock":{"sol":{"total":49993,"locked":4}}},"12":{"balance":{"inr":{"total":8630,"locked":490}},"stock":{"sol":{"total":10007,"locked":0}}}}

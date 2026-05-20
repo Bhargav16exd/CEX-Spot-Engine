@@ -1,5 +1,5 @@
-import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../../../engine/src/memory-store/orderbook/orderbook-store.js";
-import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../../../engine/src/memory-store/balance/balance-store.js";
+import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory-store/orderbook/orderbook-store.js";
+import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../memory-store/balance/balance-store.js";
 import type { OrderBodyType } from "./ask.module.js";
 
 
@@ -228,8 +228,7 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		count--;
 	}
 
-	//tbd push in queue
-	console.log("in bid",{orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE})
+	//tbd push in queuec
 	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 	//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE}));
 }

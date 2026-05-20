@@ -88,7 +88,6 @@ const initLoadBackup = async (storeTypeName:storeType) => {
     }
 
     const stringifiedData = fs.readFileSync(filePath,'utf-8');
-    console.log(stringifiedData)
     const shallowBackupCopy = JSON.parse(stringifiedData);
 
     if(storeTypeName == storeType.BALANCE){

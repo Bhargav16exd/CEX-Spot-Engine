@@ -1,4 +1,4 @@
-import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../../../engine/src/memory-store/orderbook/orderbook-store.js"
+import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory-store/orderbook/orderbook-store.js"
 import BALANCE_STORE, { readBalanceStoreUserLockedStocks, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForAskOrder, updateBalanceStoreUserLockedStocks } from "../../memory-store/balance/balance-store.js";
 import { OrderType } from "./bid.module.js"
 
@@ -36,13 +36,10 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 		//refresh memory
 		//retry and throw error
 	}
-
-	console.log(userAvailableStock);
-
+  
 	//if user own quantity is less than order throw error
 	if(quantity > userAvailableStock){
 		//error queue
-		console.log("hi")
 		throw new Error("Insufficient Quantity");
 	}
 
@@ -103,10 +100,6 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 	FUNCTIONS CREATED AS ACTIONS that are performed on ORDER BOOK
 */
 const actionCreateAsk = (userId:string , stockSymbol:string, quantity:number, price:number) => {
-
-	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].stock[stockSymbol]){
-		return false
-	}
 
 	if(!ORDERBOOK_STORE[stockSymbol]){
 		return false

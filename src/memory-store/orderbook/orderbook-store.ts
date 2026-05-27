@@ -28,3 +28,26 @@ export const addPriceToOrderBookIndex = (stockSymbol:string,side:Side,price:numb
 	//sort
 	ORDERBOOK_STORE_INDEX[stockSymbol][side].sort((a,b)=> a - b);
 }
+
+export const handleCreateOrderEntityRequest = (payload:any) => {
+  const { stockSymbol } = payload
+
+  if(ORDERBOOK_STORE_INDEX[stockSymbol]){
+    throw new Error("Stock Already Exist in PERP MARKET");
+  }
+
+  ORDERBOOK_STORE[stockSymbol] = {
+		bid:{},
+		ask:{}
+  }
+
+  ORDERBOOK_STORE_INDEX[stockSymbol] = {
+    bid:[],
+    ask:[]
+  }
+
+  console.log(ORDERBOOK_STORE)
+  console.log(ORDERBOOK_STORE_INDEX)
+
+  return true
+}

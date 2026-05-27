@@ -3,7 +3,8 @@ export type EngineCommandType =
   | "get_depth"
   | "get_user_balance"
   | "get_order"
-  | "cancel_order";
+  | "cancel_order"
+  | "create_stock_entity"
 
 export interface EngineRequestType {
   transactionId: string;

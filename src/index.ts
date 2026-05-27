@@ -10,7 +10,7 @@ dotenv.config()
 //connect redis
 connectRedis();
 
-const ENGINE_REQUEST_QUEUE = `engine-request-queue`;
+const ENGINE_REQUEST_QUEUE = `spot-engine-request-queue`;
 
 const sendResponse = async (queue:string, payload:EngineResponseType) => {
 	await publisher.lPush(queue, JSON.stringify(payload));
@@ -37,8 +37,6 @@ for(;;){
 			ok:true,
 			data:engineResponse
 		}
-
-		console.log("engine response",engineResponse);
 
 		await sendResponse(parsedRequest.responseQueue, payload);
 

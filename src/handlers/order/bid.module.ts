@@ -1,5 +1,5 @@
-import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory-store/orderbook/orderbook-store.js";
-import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../memory-store/balance/balance-store.js";
+import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory/orderbook/orderbook-store.js";
+import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../memory/balance/balance-store.js";
 import type { OrderBodyType } from "./ask.module.js";
 
 

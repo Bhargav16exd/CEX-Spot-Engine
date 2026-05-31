@@ -1,7 +1,6 @@
-import { initBalancesBackup, loadBalanceBackup, loadOrderBookBackup } from "./memory-store/backup/backup-store.js";
-import BALANCE_STORE from "./memory-store/balance/balance-store.js";
-import { connectRedis, publisher, subscriber } from "./modules/queue/queue-client.js";
-import engineRequestHandler from "./modules/request-handler/request-hanlder.js";
+import { initBalancesBackup, loadBalanceBackup } from "./backup/backup-store.js";
+import { connectRedis, publisher, subscriber } from "./queue/queue-client.js";
+import engineRequestHandler from "./request-handler/request-hanlder.js";
 import type { EngineRequestType, EngineResponseType } from "./types/engine-types.js";
 import dotenv from "dotenv"
 

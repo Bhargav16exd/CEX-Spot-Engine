@@ -3,38 +3,38 @@ import type { BalanceStoreType } from "./balance-type.js";
 const BALANCE_STORE:BalanceStoreType = {};
 
 interface User {
-    username: string;
-    password: string;
-    balance: number;
-    id: number;
+  username: string;
+  password: string;
+  balance: number;
+  id: number;
 }
 
 export const initUserInBalanceStore = (user:User) => {  
-    BALANCE_STORE[user.id] = {
-        balance:{
-            "inr":{
-                total:user.balance,
-                locked:0,
-            },
-            
-        },
-        stock:{
-            "sol":{
-                total:20,
-                locked:0
-            }
-        }
+  BALANCE_STORE[user.id] = {
+    balance:{
+      "inr":{
+        total:user.balance,
+        locked:0,
+      },
+        
+    },
+    stock:{
+      "sol":{
+        total:20,
+        locked:0
+      }
     }
+  }
 }
 
 //@ts-ignore
 export const putBackupInBalanceStore = (data) => {
-    // clear existing keys
-    Object.keys(BALANCE_STORE).forEach(key => {
-        delete BALANCE_STORE[key]
-    })
+  // clear existing keys
+  Object.keys(BALANCE_STORE).forEach(key => {
+      delete BALANCE_STORE[key]
+  })
 
-    Object.assign(BALANCE_STORE, data)
+  Object.assign(BALANCE_STORE, data);
 }
 export const readBalanceStoreUserTotalBalance = (userId:string) => {
     //@ts-ignore
@@ -140,6 +140,15 @@ export const updateBalancesAndStockForBidOrder = (stockSymbol:string, takerId:st
     updateBalanceStoreUserTotalBalance(makerId, (makerPreviousTotalBalance + (quantity * price)));
 
 }
-// ----- STOCK UPDATE ----
+
+
+export const hanldeUserBalanceUpdate = (payload : any):any => {
+  const { id , balance, marketType } = payload
+  const userTotalBalance = readBalanceStoreUserTotalBalance(id)!;
+  updateBalanceStoreUserTotalBalance(id, userTotalBalance + balance)
+  //@ts-ignore
+  console.log(BALANCE_STORE)
+  return BALANCE_STORE[id]?.balance["inr"]
+}
 
 export default BALANCE_STORE;

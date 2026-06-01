@@ -46,8 +46,5 @@ export const handleCreateOrderEntityRequest = (payload:any) => {
     ask:[]
   }
 
-  console.log(ORDERBOOK_STORE)
-  console.log(ORDERBOOK_STORE_INDEX)
-
   return true
 }

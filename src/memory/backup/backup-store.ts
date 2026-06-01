@@ -1,13 +1,14 @@
 import fs from "fs"
-import BALANCE_STORE, { putBackupInBalanceStore } from "../memory/balance/balance-store.js";
+
 import { fileURLToPath } from "url";
 import path from "path";
-import { ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../memory/orderbook/orderbook-store.js";
+import BALANCE_STORE, { putBackupInBalanceStore } from "../balance/balance-store.js";
+import { ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../orderbook/orderbook-store.js";
 
 enum storeType {
-    BALANCE = "BALANCE",
-    ORDER_BOOK = "ORDER_BOOK",
-    ORDER_BOOK__INDEX = "ORDER_BOOK_INDEX"
+  BALANCE = "BALANCE",
+  ORDER_BOOK = "ORDER_BOOK",
+  ORDER_BOOK__INDEX = "ORDER_BOOK_INDEX"
 }
 
 // ------ BACKUP REGION START ------

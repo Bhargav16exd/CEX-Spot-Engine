@@ -1,7 +1,6 @@
-import { initBalancesBackup, loadBalanceBackup } from "./backup/backup-store.js";
+import type { EngineRequestType, EngineResponseType } from "@cex/shared";
 import { connectRedis, publisher, subscriber } from "./queue/queue-client.js";
 import engineRequestHandler from "./request-handler/request-hanlder.js";
-import type { EngineRequestType, EngineResponseType } from "./types/engine-types.js";
 import dotenv from "dotenv"
 
 dotenv.config()
@@ -14,10 +13,6 @@ const ENGINE_REQUEST_QUEUE = `spot-engine-request-queue`;
 const sendResponse = async (queue:string, payload:EngineResponseType) => {
 	await publisher.lPush(queue, JSON.stringify(payload));
 }
-
-loadBalanceBackup().then(()=>{
-	initBalancesBackup();
-});
 
 //process request
 for(;;){

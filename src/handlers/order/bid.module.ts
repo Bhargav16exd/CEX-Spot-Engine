@@ -1,12 +1,8 @@
 import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory/orderbook/orderbook-store.js";
 import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../memory/balance/balance-store.js";
 import type { OrderBodyType } from "./ask.module.js";
+import { OrderType } from "@cex/shared";
 
-
-export enum OrderType {
-	LIMIT="LIMIT",
-	MARKET="MARKET"
-}
 
 export function hanldeOrderSideBid(body:OrderBodyType):any{
 
@@ -38,7 +34,7 @@ export function hanldeOrderSideBid(body:OrderBodyType):any{
 
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"]) return
 
-	if(type == OrderType.LIMIT){
+	if(type == OrderType.limit){
 
 		const takerPreviousLockedBalance = readBalanceStoreUserLockedBalance(userId);
 		updateBalanceStoreUserLockedBalance(userId, (takerPreviousLockedBalance + (quantity * price)));
@@ -78,7 +74,7 @@ export function hanldeOrderSideBid(body:OrderBodyType):any{
 	}
 
 
-	if(type == OrderType.MARKET){
+	if(type == OrderType.market){
 		handleOrderTypeMarket(userId, stockSymbol, side, type, price, quantity);
 	}
 }

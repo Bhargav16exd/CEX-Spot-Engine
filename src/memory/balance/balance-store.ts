@@ -117,7 +117,6 @@ export const updateBalancesAndStockForBidOrder = (stockSymbol:string, takerId:st
 
 }
 
-
 /* 
   ------ QUEUE REQUEST HANDLERS ------
   ------------------------------------
@@ -141,14 +140,24 @@ export const handle_INIT_USER_BALANCE_Request = (payload:any) => {
   return true
 }
 
+export const handle_UPDATE_USER_BALANCE_Request = (payload:any) =>{
+  const { id, balance } = payload
+  if(!id || !balance){
+    throw new Error("Invalid Inputs");
+  }
+  
+  const userBalance = readBalanceStoreUserTotalBalance(id)
 
-export const hanldeUserBalanceUpdate = (payload : any):any => {
-  const { id , balance, marketType } = payload
-  const userTotalBalance = readBalanceStoreUserTotalBalance(id)!;
-  updateBalanceStoreUserTotalBalance(id, userTotalBalance + balance)
-  //@ts-ignore
-  console.log(BALANCE_STORE)
-  return BALANCE_STORE[id]?.balance["inr"]
+  if( userBalance === undefined ){
+    throw new Error("Invalid User Id");
+  }
+
+  updateBalanceStoreUserTotalBalance(id, userBalance + balance);
+
+  return {
+    balance:readBalanceStoreUserTotalBalance(id)
+  }
 }
+
 
 export default BALANCE_STORE;

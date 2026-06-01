@@ -1,31 +1,7 @@
 import type { BalanceStoreType } from "./balance-type.js";
 
-const BALANCE_STORE:BalanceStoreType = {};
+const BALANCE_STORE : BalanceStoreType = {};
 
-interface User {
-  username: string;
-  password: string;
-  balance: number;
-  id: number;
-}
-
-export const initUserInBalanceStore = (user:User) => {  
-  BALANCE_STORE[user.id] = {
-    balance:{
-      "inr":{
-        total:user.balance,
-        locked:0,
-      },
-        
-    },
-    stock:{
-      "sol":{
-        total:20,
-        locked:0
-      }
-    }
-  }
-}
 
 //@ts-ignore
 export const putBackupInBalanceStore = (data) => {
@@ -139,6 +115,30 @@ export const updateBalancesAndStockForBidOrder = (stockSymbol:string, takerId:st
     updateBalanceStoreUserLockedStocks(makerId, stockSymbol, (makerPreviousLockedStocks - quantity));
     updateBalanceStoreUserTotalBalance(makerId, (makerPreviousTotalBalance + (quantity * price)));
 
+}
+
+
+/* 
+  ------ QUEUE REQUEST HANDLERS ------
+  ------------------------------------
+*/ 
+
+export const handle_INIT_USER_BALANCE_Request = (payload:any) => {
+  
+  const { id } = payload;
+  if( !id ) throw new Error("Invalid Input");
+
+  BALANCE_STORE[id] = {
+    balance:{
+      "inr":{
+        total:0,
+        locked:0
+      }
+    },
+    stock:{}
+  }
+
+  return true
 }
 
 

@@ -159,5 +159,24 @@ export const handle_UPDATE_USER_BALANCE_Request = (payload:any) =>{
   }
 }
 
+export const handle_GET_USER_BALANCE_Request = (payload:any) => {
+  const { id } = payload;
+
+  if(!id){
+    throw new Error("Invalid Inputs");
+  }
+
+  const totalBalance = readBalanceStoreUserTotalBalance(id)
+  const lockedBalance = readBalanceStoreUserLockedBalance(id);
+
+  if(totalBalance === undefined || lockedBalance === undefined){
+    throw new Error("Invalid User Id")
+  }
+
+  return {
+    balance: (totalBalance - lockedBalance)
+  }
+}
+
 
 export default BALANCE_STORE;

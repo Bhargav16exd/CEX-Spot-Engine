@@ -1,7 +1,7 @@
 import { EngineCommandEnum, type EngineRequestType } from "@cex/shared";
 import { hanldeOrderSideAsk } from "../handlers/order/ask.module.js";
 import { hanldeOrderSideBid } from "../handlers/order/bid.module.js";
-import { handle_INIT_USER_BALANCE_Request, handle_UPDATE_USER_BALANCE_Request } from "../memory/balance/balance-store.js";
+import { handle_GET_USER_BALANCE_Request, handle_INIT_USER_BALANCE_Request, handle_UPDATE_USER_BALANCE_Request } from "../memory/balance/balance-store.js";
 import { handleCreateOrderEntityRequest } from "../memory/orderbook/orderbook-store.js";
 import { OrderSide } from "../types/order.types.js";
 
@@ -23,7 +23,14 @@ function engineRequestHandler(request:EngineRequestType){
       return handle_UPDATE_USER_BALANCE_Request(request.payload);
     }
 
+    if(messageType === EngineCommandEnum.GET_USER_BALANCE){
+      return handle_GET_USER_BALANCE_Request(request.payload);
+    }
 
+    /*
+      ------- ORDER REQUEST HANLDER -------- 
+      -------------------------------------
+    */ 
 
 
     if(messageType == EngineCommandEnum.CREATE_ORDER){

@@ -1,7 +1,10 @@
-import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory/orderbook/orderbook-store.js";
+import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX, pushOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js";
 import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../memory/balance/balance-store.js";
 import type { OrderBodyType } from "./ask.module.js";
-import { OrderType } from "@cex/shared";
+import { OrderType, type SideSpot } from "@cex/shared";
+import { actionCreateBid, identifyOrderStatus, settleOrders } from "./utils.js";
+import { OrderSide } from "../../types/order.types.js";
+import { ACTIVE_ORDERS_INDEX, createOrder, deleteOrder, ORDERS } from "../../memory/orders/order.js";
 
 
 export function hanldeOrderSideBid(body:OrderBodyType):any{
@@ -12,105 +15,84 @@ export function hanldeOrderSideBid(body:OrderBodyType):any{
 		throw new Error("Invalid Inputs");
 	}
 
-	if(!ORDERBOOK_STORE[stockSymbol]){
-			ORDERBOOK_STORE[stockSymbol] = {
-				ask:{},
-				bid:{}
-			}
-	}
 	const userAvailableBalance = readBalanceStoreUserTotalBalance(userId)! - readBalanceStoreUserLockedBalance(userId)!
 
 	if(!userAvailableBalance){
-		//tbd
-		//user owned stocks are not found in memory 
-		//refresh memory
-		//retry and throw error
+    throw new Error("Internal Server Error");
 	}
 
 	if((price * quantity) > userAvailableBalance){
-		//tbd
 		throw new Error("Insufficiety Balance");
 	}
 
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"]) return
 
 	if(type == OrderType.limit){
-
-		const takerPreviousLockedBalance = readBalanceStoreUserLockedBalance(userId);
-		updateBalanceStoreUserLockedBalance(userId, (takerPreviousLockedBalance + (quantity * price)));
-
-		/*
-			SCENARIO 1 - USER WANTS TO BUY BUT NO CORRESPONDING ASK WITH SAME PRICE IS AVAILABLE
-			ACTION - WE PUT BID IN ORDERBOOK
-		*/
-		const ORDERBOOK_STORE_INDEX_length = ORDERBOOK_STORE_INDEX[stockSymbol]?.ask.length!
-
-		if(!ORDERBOOK_STORE[stockSymbol].ask[price] 
-			&& 
-			(price < ORDERBOOK_STORE_INDEX[stockSymbol]?.ask[0]! || ORDERBOOK_STORE_INDEX_length == 0) 
-		){
-			//implies if there alredy exist an ASK then just increment its quantity 
-			if(ORDERBOOK_STORE[stockSymbol].bid[price]){
-				ORDERBOOK_STORE[stockSymbol].bid[price].totalQuantity = ORDERBOOK_STORE[stockSymbol].bid[price].totalQuantity + quantity;
-				ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity = ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity + quantity;
-				//tbd
-				//push in queue
-				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
-			}
-			//if there exist no bid then create one
-			else{
-				actionCreateBid(userId, stockSymbol, quantity, price);
-				//tbd push in queue
-				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
-			}
-		}
-
-		/*
-			SCENARIO 2 - USER WANTS TO BUY && ASK WITH SAME PRICE IS AVAILABLE , depending on quantity available for sale we perform actions
-		  ACTION - WE PUT BID IN ORDERBOOK OR DELETE WHOLE BID IF REQUIRED
-		*/
-
-		return handlePriceAvailableForOrderTypeLimit(userId,  stockSymbol, side, type, price, quantity);
+    return hanldeOrderTypeLimit(userId, stockSymbol, OrderSide.bid, type, price, quantity)
 	}
-
 
 	if(type == OrderType.market){
-		handleOrderTypeMarket(userId, stockSymbol, side, type, price, quantity);
+		return handleOrderTypeMarket(userId, stockSymbol, side, type, price, quantity);
 	}
 }
 
-const actionCreateBid = (userId:string , stockSymbol:string, quantity:number, price:number) => {
+const hanldeOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:OrderType, price:number, quantity:number) => {
 
-	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"]){
-		//tbd
-		return false
-	}
+  //SAFTEY CHECKS
+  if(!ORDERBOOK_STORE[symbol]){
+    throw new Error("Internal Server Error");
+  }
 
-	if(!ORDERBOOK_STORE[stockSymbol]){
-		//tbd
-		return false
-	}
+  //Locking user balance
+  const takerPreviousLockedBalance = readBalanceStoreUserLockedBalance(userId);
+	updateBalanceStoreUserLockedBalance(userId, (takerPreviousLockedBalance + (quantity * price)));
 
-	//update orderbook
-	ORDERBOOK_STORE[stockSymbol].bid[price] = {
-		totalQuantity:quantity,
-		remainingQuantity:quantity,
-		orders:[{
-			userId,
-			quantity,
-			filledQuantity:0,
-			orderId:"1",
-			createdAt: new Date().toISOString()
-		}]
-	}
+  const order = createOrder({userId, symbol, side, type, price, quantity});
+  const orderId = order.orderId;
 
-	//update orderbook index
-	addPriceToOrderBookIndex(stockSymbol, "bid", price);
+  /*
+    SCENARIO 1 - USER WANTS TO BUY BUT NO CORRESPONDING ASK WITH SAME PRICE IS AVAILABLE
+    ACTION - WE PUT BID IN ORDERBOOK
+  */
+  const ORDERBOOK_STORE_INDEX_length = ORDERBOOK_STORE_INDEX[symbol]?.ask.length!
 
-	return true
+  if(!ORDERBOOK_STORE[symbol].ask[price] 
+    && 
+    (price < ORDERBOOK_STORE_INDEX[symbol]?.ask[0]! || ORDERBOOK_STORE_INDEX_length == 0) 
+  ){
+
+    //implies if there alredy exist an ASK then just increment its quantity 
+    if(ORDERBOOK_STORE[symbol].bid[price]){
+      
+      ORDERBOOK_STORE[symbol].bid[price].totalQuantity = ORDERBOOK_STORE[symbol].bid[price].totalQuantity + quantity;
+      ORDERBOOK_STORE[symbol].bid[price].remainingQuantity = ORDERBOOK_STORE[symbol].bid[price].remainingQuantity + quantity;
+
+      //push Order Id reference in orderbook
+      pushOrderIdInMakerIds(symbol, side, price, userId, orderId);
+
+      //increment updateId 
+      incrementUpdateId(symbol);
+
+      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+    }
+    //if there exist no bid then create one
+    else{
+
+      actionCreateBid(userId, symbol, quantity, price, orderId);
+
+      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+    }
+  }
+
+  /*
+    SCENARIO 2 - USER WANTS TO BUY && ASK WITH SAME PRICE IS AVAILABLE , depending on quantity available for sale we perform actions
+    ACTION - WE PUT BID IN ORDERBOOK OR DELETE WHOLE BID IF REQUIRED
+  */
+
+  return handlePriceAvailableForOrderTypeLimit(userId,  symbol, side, type, price, quantity, orderId);
 }
 
-const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number, orderId:string) => {
 
 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]) return false;
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"]) return;
@@ -118,19 +100,18 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 	const orderTotalCost = quantity * userPrice;
 	let totalCostSpent = 0;
 
+  let finalFilledQuantity = 0;
 	let fullFilledQuantity = 0;
 	let count = 0
 
-
 	for(const price of ORDERBOOK_STORE_INDEX[stockSymbol].ask){
-
 		/*
 			IF USER GIVEN PRICE IS NOT AVAILABLE IN ORDERBOOK BUT THERE EXIST FEW ASK PRICES THAT ARE LESS THAN 
 			BID , consume all till price > userPrice , and create bid for remaining quantity 
 		*/
 		if(price > userPrice && quantity > fullFilledQuantity){
 			const remainingStockToBuy = (quantity - fullFilledQuantity);
-			actionCreateBid(userId, stockSymbol, remainingStockToBuy, userPrice);
+			actionCreateBid(userId, stockSymbol, remainingStockToBuy, userPrice, orderId);
 			break;
 		}
 
@@ -146,40 +127,36 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		if(!ORDERBOOK_STORE[stockSymbol] || !ORDERBOOK_STORE[stockSymbol].ask[price]) return false;
 
 		if(askInfo.remainingQuantity == (quantity - fullFilledQuantity)){
-			//tbd
-			//add entry in db for fills
-
-			//delete both entries
-			delete ORDERBOOK_STORE[stockSymbol].ask[price];
 
 			totalCostSpent = totalCostSpent + (askInfo.remainingQuantity * price);
+      finalFilledQuantity = finalFilledQuantity + askInfo.remainingQuantity
 
-			//update user stocks
-			updateBalancesAndStockForBidOrder(stockSymbol, userId, askInfo.orders[0]?.userId!, askInfo.remainingQuantity, price);
+      //settle makers orders and balances
+      const makerIds = askInfo.makerIds;
+      settleOrders(makerIds, userId, stockSymbol , (quantity - fullFilledQuantity), orderId);
 
-			count++;
+      //update orderbook
+      incrementUpdateId(stockSymbol);
+
+      //delete maker entry
+			delete ORDERBOOK_STORE[stockSymbol].ask[price];
+
+      count++;
 			break;
 		}
 
 		if(askInfo.remainingQuantity > (quantity - fullFilledQuantity)){
 
+      totalCostSpent = totalCostSpent + ((quantity - fullFilledQuantity) * price);
+      finalFilledQuantity = finalFilledQuantity + (quantity - fullFilledQuantity)
+
+      //settle orders
+      const makerIds = askInfo.makerIds;
+      settleOrders(makerIds, userId, stockSymbol , (quantity - fullFilledQuantity), orderId);
+
 			//update order book
 			const previousRemainingQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity;
 			ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity = previousRemainingQuantity - (quantity - fullFilledQuantity);
-
-			//add order in orderbook
-			ORDERBOOK_STORE[stockSymbol].ask[price].orders.push({
-				userId,
-				quantity:askInfo.totalQuantity,
-				filledQuantity:quantity,
-				orderId:"1",
-				createdAt: new Date().toISOString()
-			})
-
-			totalCostSpent = totalCostSpent + ((quantity - fullFilledQuantity) * price);
-
-			//update user stocks
-			updateBalancesAndStockForBidOrder(stockSymbol, userId, askInfo.orders[0]?.userId!, (quantity - fullFilledQuantity), price); 
 
 			break;
 		}
@@ -188,28 +165,38 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		fullFilledQuantity = fullFilledQuantity + askInfo.remainingQuantity;
 		totalCostSpent = totalCostSpent + (askInfo.remainingQuantity * price);
 
+    //settle orders
+    const makerIds = askInfo.makerIds;
+    settleOrders(makerIds, userId, stockSymbol , (quantity - fullFilledQuantity), orderId);
+
 		//delete ask entry from order book
-			//tbd add fills db
+    incrementUpdateId(stockSymbol)
 		delete ORDERBOOK_STORE[stockSymbol].ask[price];
 
 		//add bid entry to the order book
 		//partial fullfillment of bid order --> implies requested stock amount > available ask
 		if(price == userPrice){
 			const remainingStockToBuy = (quantity - fullFilledQuantity);
-			actionCreateBid(userId, stockSymbol, remainingStockToBuy, price);
+			actionCreateBid(userId, stockSymbol, remainingStockToBuy, price, orderId);
 		}
 
 		if(price  == ORDERBOOK_STORE_INDEX[stockSymbol].ask[ORDERBOOK_STORE_INDEX[stockSymbol].ask.length - 1]){
 			totalCostSpent = totalCostSpent + ((quantity - fullFilledQuantity) * userPrice);
 			const remainingStockToBuy = (quantity - fullFilledQuantity);
-			actionCreateBid(userId, stockSymbol, remainingStockToBuy, userPrice);
+			actionCreateBid(userId, stockSymbol, remainingStockToBuy, userPrice, orderId);
 		}
-
-		//update user stocks
-		updateBalancesAndStockForBidOrder(stockSymbol, userId, askInfo.orders[0]?.userId!, askInfo.remainingQuantity, price);
 
 		count++;
 	}
+
+
+  const order = ORDERS[orderId]!
+  
+  order.status = identifyOrderStatus(quantity, finalFilledQuantity)!;
+
+  if(order.status === "closed"){
+    deleteOrder(orderId);
+  }
 
 	/*
 	 IF ASK EXIST WITH PRICE LESS THAN OR EQUAL TO USER GIVEN PRICE , we lock the limit amount which is greater , so in that scenario
@@ -222,11 +209,9 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 	while(count > 0){
 		ORDERBOOK_STORE_INDEX[stockSymbol].ask.shift();
 		count--;
-	}
+  }
 
-	//tbd push in queuec
-	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
-	//return res.json(new HttpSuccessResponse(200, true, "Order Placed",{orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE}));
+	return {orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE};
 }
 
 const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {

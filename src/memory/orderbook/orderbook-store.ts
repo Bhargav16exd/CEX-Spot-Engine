@@ -1,9 +1,11 @@
+import type { SideSpot } from "@cex/shared";
 import type { OrderbookIndexStoreType, OrderbookStoreType } from "./orderbook-type.js";
 
 // export const ORDERBOOK_STORE:OrderbookStoreType = {};
 
 export const ORDERBOOK_STORE: OrderbookStoreType = {
 	sol: {
+    updateId:0,
 		ask:{},
 		bid:{}
 }
@@ -16,9 +18,37 @@ export const ORDERBOOK_STORE_INDEX: OrderbookIndexStoreType= {
 	}
 };
 
-type Side = "ask" | "bid";
+/*
+  ------- ORDERBOOK MODFIERS ------
+  ---------------------------------
+*/
 
-export const addPriceToOrderBookIndex = (stockSymbol:string,side:Side,price:number) => {
+export const pushOrderIdInMakerIds = (symbol:string, side:SideSpot, price:number, userId:string, orderId:string) =>{
+
+  if(!ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId]){
+    ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId] = [orderId]
+    return 
+  }
+
+  ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId].push(orderId);
+}
+
+export const removeOrderIdInMakerIds = (symbol:string, side:SideSpot, price:number, userId:string, orderId:string) =>{
+
+  if(!ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId]){
+    return 
+  }
+
+  const orderIds = ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId]
+
+  ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId] = orderIds.filter((id:string) => id != orderId);
+
+  if(ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId].length === 0 ){
+    delete  ORDERBOOK_STORE[symbol]![side]![price]!.makerIds[userId]
+  }
+}
+
+export const addPriceToOrderBookIndex = (stockSymbol:string, side:SideSpot, price:number) => {
 
 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]){
 		return
@@ -33,10 +63,11 @@ export const handleCreateOrderEntityRequest = (payload:any) => {
   const { stockSymbol } = payload
 
   if(ORDERBOOK_STORE_INDEX[stockSymbol]){
-    throw new Error("Stock Already Exist in PERP MARKET");
+    throw new Error("Stock Already Exist in SPOT MARKET");
   }
 
   ORDERBOOK_STORE[stockSymbol] = {
+    updateId:0,
 		bid:{},
 		ask:{}
   }
@@ -47,4 +78,8 @@ export const handleCreateOrderEntityRequest = (payload:any) => {
   }
 
   return true
+}
+
+export const incrementUpdateId = (symbol:string) => {
+  ORDERBOOK_STORE[symbol]!.updateId! = ORDERBOOK_STORE[symbol]?.updateId! + 1 
 }

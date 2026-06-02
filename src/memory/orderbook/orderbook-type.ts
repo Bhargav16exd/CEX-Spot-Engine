@@ -1,38 +1,34 @@
 
 export interface OrderbookStoreType {
-    [stockName: string]: StockSpecificOrderbookStoreType
+  [stockName: string]: StockSpecificOrderbookStoreType
 }
 
 export interface OrderbookIndexStoreType {
-    [stockName: string]: StockSpecificOrderbookIndexStoreType
+  [stockName: string]: StockSpecificOrderbookIndexStoreType
 }
 
 interface StockSpecificOrderbookIndexStoreType {
-    ask:number[],
-    bid:number[]
+  ask:number[],
+  bid:number[]
 }
 
 interface StockSpecificOrderbookStoreType {
-    ask:AskType,
-    bid:BidType
+  updateId:number;
+  ask:AskType,
+  bid:BidType
 }
 
 interface AskType {
-    [price :string]:TransactionEntityType
+  [price :string]:TransactionEntityType
 }
 
 interface BidType {
-    [price :string]:TransactionEntityType
+  [price :string]:TransactionEntityType
 }
 
 interface TransactionEntityType {
-    totalQuantity:number;
-    remainingQuantity:number;
-    orders:{
-        userId:string
-        quantity:number
-        filledQuantity:number
-        orderId:string
-        createdAt:string
-    }[]
+  totalQuantity:number;
+  remainingQuantity:number;
+  makerIds: Record<string, Array<string>>;
+  takerIds: Record<string, Array<string>>;
 }

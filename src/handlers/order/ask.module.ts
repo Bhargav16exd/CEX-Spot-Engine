@@ -1,6 +1,8 @@
-import { addPriceToOrderBookIndex, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../../memory/orderbook/orderbook-store.js"
+import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX, pushOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js"
 import BALANCE_STORE, { readBalanceStoreUserLockedStocks, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForAskOrder, updateBalanceStoreUserLockedStocks } from "../../memory/balance/balance-store.js";
-import { OrderType } from "@cex/shared";
+import { OrderType, type SideSpot } from "@cex/shared";
+import { actionCreateAsk, settleOrders } from "./utils.js";
+import { ACTIVE_ORDERS_INDEX, createOrder, ORDERS } from "../../memory/orders/order.js";
 
 export type OrderBodyType = {
 	userId:string,
@@ -21,10 +23,7 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 
 	//if that stock doesnt exist in order book create an entry for that
 	if(!ORDERBOOK_STORE[stockSymbol]){
-		ORDERBOOK_STORE[stockSymbol] = {
-			ask : {},
-			bid: {}
-		}
+    return false
 	}
 
 	//userAvailableStocks - these are the stocks that can be used further
@@ -50,86 +49,79 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 
 
 	if(type == OrderType.limit){
-
-		//before starting order - lock all the stocks that are required for order fullfillment
-		const takerPreviousLockedStocks = readBalanceStoreUserLockedStocks(userId, stockSymbol);
-		updateBalanceStoreUserLockedStocks(userId, stockSymbol, (takerPreviousLockedStocks + quantity));
-
-		/*
-			SCENARIO 1 - USER WANTS TO BUY BUT NO BID IS AVAILABLE
-			ACTION - WE PUT ASK IN ORDERBOOK
-		*/
-		const ORDERBOOK_STORE_INDEX_length = ORDERBOOK_STORE_INDEX[stockSymbol]?.bid.length!
-
-		//if bid for that price doesnt exist , sit in ask side of orderbook
-		if(!ORDERBOOK_STORE[stockSymbol]?.bid[price] 
-			&&
-			(price > ORDERBOOK_STORE_INDEX[stockSymbol]!.bid[ORDERBOOK_STORE_INDEX_length-1]! 
-				|| ORDERBOOK_STORE_INDEX_length == 0)
-		){			
-		
-			//implies if there alredy exist an ASK then just increment its quantity 
-			if(ORDERBOOK_STORE[stockSymbol].ask[price]){
-
-				ORDERBOOK_STORE[stockSymbol].ask[price].totalQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].totalQuantity + quantity;
-				ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity + quantity;
-				//tbd push in response queue
-				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
-			}
-			//else create a new ask
-			else{
-				actionCreateAsk(userId, stockSymbol, quantity ,price);
-				//tbd push in response queue
-				return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
-			}
-		}
-		/*
-			SCENARIO 2 - USER WANTS TO SELL/ASK && BID IS AVAILABLE , depending on quantity available for sale we perform actions
-		  ACTION - WE PUT ASK IN ORDERBOOK OR DELETE WHOLE BID IF REQUIRED
-		*/
-
-		return handlePriceAvailableForOrder(userId, stockSymbol, side, type, price, quantity);
+    return handleOrderTypeLimit(userId, stockSymbol, "ask", OrderType.limit, price, quantity)
 	}
 
 	if(type == OrderType.market){
-		handleOrderTypeMarket(userId, stockSymbol, side, type , price, quantity);
+		return handleOrderTypeMarket(userId, stockSymbol, side, type , price, quantity);
 	}
 }
 
-/*
-	FUNCTIONS CREATED AS ACTIONS that are performed on ORDER BOOK
-*/
-const actionCreateAsk = (userId:string , stockSymbol:string, quantity:number, price:number) => {
+const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:OrderType, price:number, quantity:number) => {
 
-	if(!ORDERBOOK_STORE[stockSymbol]){
-		return false
+  //SAFETY CHECKS
+  if(!ORDERBOOK_STORE[symbol]){
+    throw new Error("Internal Server Error");
 	}
 
-	//update orderbook
-	ORDERBOOK_STORE[stockSymbol].ask[price] = {
-		totalQuantity:quantity,
-		remainingQuantity:quantity,
-		orders:[{
-			userId,
-			quantity,
-			filledQuantity:0,
-			orderId:"1",
-			createdAt: new Date().toISOString()
-		}]
-	}
+  //before starting order - lock all the stocks that are required for order fullfillment
+  const takerPreviousLockedStocks = readBalanceStoreUserLockedStocks(userId, symbol);
+  updateBalanceStoreUserLockedStocks(userId, symbol, (takerPreviousLockedStocks + quantity));
 
-	//update orderbook index
-	addPriceToOrderBookIndex(stockSymbol, "ask", price);
+  const order = createOrder({userId, symbol, side, type, price, quantity});
+  const orderId = order.orderId;
 
-	return true
+  /*
+    SCENARIO 1 - USER WANTS TO BUY BUT NO BID IS AVAILABLE
+    ACTION - WE PUT ASK IN ORDERBOOK
+  */
+  const ORDERBOOK_STORE_INDEX_length = ORDERBOOK_STORE_INDEX[symbol]?.bid.length!
+
+  //if bid for that price doesnt exist , sit in ask side of orderbook
+  if(!ORDERBOOK_STORE[symbol]?.bid[price] 
+    &&
+    (price > ORDERBOOK_STORE_INDEX[symbol]!.bid[ORDERBOOK_STORE_INDEX_length-1]! 
+      || ORDERBOOK_STORE_INDEX_length == 0)
+  ){			
+  
+
+    //implies if there alredy exist an ASK then just increment its quantity 
+    if(ORDERBOOK_STORE[symbol].ask[price]){
+      ORDERBOOK_STORE[symbol].ask[price].totalQuantity = ORDERBOOK_STORE[symbol].ask[price].totalQuantity + quantity;
+      ORDERBOOK_STORE[symbol].ask[price].remainingQuantity = ORDERBOOK_STORE[symbol].ask[price].remainingQuantity + quantity;
+
+      pushOrderIdInMakerIds(symbol, side, price, userId, orderId);
+
+      incrementUpdateId(symbol);
+
+      //tbd push in response queue
+      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+    }
+    //else create a new ask
+    else{
+      actionCreateAsk(userId, symbol, quantity ,price, orderId);
+
+      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+    }
+  }
+
+  /*
+    SCENARIO 2 - USER WANTS TO SELL/ASK && BID IS AVAILABLE , depending on quantity available for sale we perform actions
+    ACTION - WE PUT ASK IN ORDERBOOK OR DELETE WHOLE BID IF REQUIRED
+  */
+
+  return handlePriceAvailableForOrder(userId, symbol, side, type, price, quantity, orderId);
+
 }
 
-const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number, orderId:string) => {
 
 	if(!ORDERBOOK_STORE[stockSymbol]) return;
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].stock[stockSymbol]) return;
 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]?.bid) return;
-	let fullFilledQuantity = 0;
+	
+  let finalFilledQuantity = 0;
+  let fullFilledQuantity = 0;
 	let count = 0;
 
 	const orderTotalCost = quantity * userPrice;
@@ -140,7 +132,7 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 		const price = ORDERBOOK_STORE_INDEX[stockSymbol].bid[i]!;
 
 		if(price < userPrice && fullFilledQuantity != quantity){
-			actionCreateAsk(userId, stockSymbol, (quantity - fullFilledQuantity) ,userPrice);
+			actionCreateAsk(userId, stockSymbol, (quantity - fullFilledQuantity) ,userPrice, orderId);
 			break;
 		}
 
@@ -155,14 +147,21 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 
 		//complete fullfillment of ask order
 		if(bidInfo.remainingQuantity == (quantity - fullFilledQuantity)){
-			//tbd
-			//add entry in db for fills
-			delete ORDERBOOK_STORE[stockSymbol].bid[price];
 
-			//partial fullfillment of ask order --> implies requested amount > available bids
+      //partial fullfillment of ask order --> implies requested amount > available bids
 			totalCostSpent = totalCostSpent + (bidInfo.remainingQuantity * price);
+      finalFilledQuantity = finalFilledQuantity + bidInfo.remainingQuantity
 
-			updateBalancesAndStockForAskOrder(stockSymbol, userId, bidInfo.orders[0]?.userId!, bidInfo.remainingQuantity, price);
+      //settle makers
+      const makerIds = bidInfo.makerIds
+      settleOrders(makerIds, userId, stockSymbol, bidInfo.remainingQuantity, orderId)
+	
+      //update orderbook
+      incrementUpdateId(stockSymbol);
+      
+      //add entry in db for fills
+			delete ORDERBOOK_STORE[stockSymbol].bid[price];
+	
 			count++;
 			break;
 		}
@@ -170,60 +169,48 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 		//complete fullfillment of ask order
 		if(bidInfo.remainingQuantity > (quantity - fullFilledQuantity)){
 
+      totalCostSpent = totalCostSpent + ((quantity - fullFilledQuantity) * price);
+      finalFilledQuantity = finalFilledQuantity +  (quantity - fullFilledQuantity);
+
+      //update makers
+      const makerIds = bidInfo.makerIds
+      settleOrders(makerIds, userId, stockSymbol, (quantity - fullFilledQuantity), orderId);
+
+
 			//reduce quantity in orderbook 
+      incrementUpdateId(stockSymbol);
 			const previousRemainingQuantity = ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity
 			ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity = previousRemainingQuantity - (quantity - fullFilledQuantity)
-
-			//add order in orderbook
-			ORDERBOOK_STORE[stockSymbol].bid[price].orders.push({
-				userId,
-				quantity:bidInfo.totalQuantity,
-				filledQuantity:quantity,
-				orderId:"1",
-				createdAt: new Date().toISOString()
-			})
-
-			totalCostSpent = totalCostSpent + ((quantity - fullFilledQuantity) * price);
-
-			//after all stocks are sold , update user balance and stocks in balance store
-			updateBalancesAndStockForAskOrder(stockSymbol, userId, bidInfo.orders[0]?.userId!, (quantity - fullFilledQuantity), price);
 
 			break;
 		}
 
 		//update fullfilled quantity
+    finalFilledQuantity = finalFilledQuantity + bidInfo.remainingQuantity;
 		fullFilledQuantity = fullFilledQuantity + bidInfo.remainingQuantity;
-
 		totalCostSpent = totalCostSpent + (bidInfo.remainingQuantity * price);
 
+    //settle makers
+    const makerIds = bidInfo.makerIds
+    settleOrders(makerIds, userId, stockSymbol, bidInfo.remainingQuantity, orderId);
+
+
 		//delete bid entry from order book 
-			//tbd add fills db
+    incrementUpdateId(stockSymbol);
 		delete ORDERBOOK_STORE[stockSymbol].bid[price]
 
 
 		if(price == userPrice){
 			//add ask entry to the order book
 			const remainingStocksToSell = (quantity - fullFilledQuantity);
-			actionCreateAsk(userId, stockSymbol, remainingStocksToSell, price)
+			actionCreateAsk(userId, stockSymbol, remainingStocksToSell, price, orderId)
 		}
 
 		if(price == ORDERBOOK_STORE_INDEX[stockSymbol].bid[0]){
 			//add ask entry to the order book
 			const remainingStocksToSell = (quantity - fullFilledQuantity);
-			actionCreateAsk(userId, stockSymbol, remainingStocksToSell, userPrice);
+			actionCreateAsk(userId, stockSymbol, remainingStocksToSell, userPrice, orderId);
 		}
-
-		//partial fullfillment of ask order --> implies requested amount > available bids
-
-		/*
-			AS PARTIAL STOCKS ARE asked
-			-> LOCKED STOCKS ARE HANDLED BY FUNCTION ITSELF
-			AND PARTIAL STOCKS ARE SOLD
-			-> WE NEED TO UPDATE JUST THE BALANCE AS SALE VALUE
-		*/
-
-		//after all stocks are sold , update user balance and stocks in balance store
-		updateBalancesAndStockForAskOrder(stockSymbol, userId, bidInfo.orders[0]?.userId!, bidInfo.remainingQuantity, price);
 
 		count++;
 	}
@@ -232,7 +219,11 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 		ORDERBOOK_STORE_INDEX[stockSymbol].bid.pop();
 		count--;
 	}
-	//tbd push in response queue
+
+  console.log("ASKKK")
+  console.log(ORDERS)
+  console.log(ACTIVE_ORDERS_INDEX)
+
 	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 }
 

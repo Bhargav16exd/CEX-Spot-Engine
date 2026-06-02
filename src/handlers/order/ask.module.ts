@@ -1,8 +1,9 @@
 import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX, pushOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js"
 import BALANCE_STORE, { readBalanceStoreUserLockedStocks, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForAskOrder, updateBalanceStoreUserLockedStocks } from "../../memory/balance/balance-store.js";
-import { OrderType, type SideSpot } from "@cex/shared";
-import { actionCreateAsk, settleOrders } from "./utils.js";
-import { ACTIVE_ORDERS_INDEX, createOrder, ORDERS } from "../../memory/orders/order.js";
+import { AdapterEntityType, AdapterMessageType, OrderType, type SideSpot } from "@cex/shared";
+import { actionCreateAsk, identifyOrderStatus, settleOrders } from "./utils.js";
+import { ACTIVE_ORDERS_INDEX, createOrder, deleteOrder, ORDERS, updateOrderFilledQuantity } from "../../memory/orders/order.js";
+import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";
 
 export type OrderBodyType = {
 	userId:string,
@@ -94,12 +95,23 @@ const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
 
       incrementUpdateId(symbol);
 
-      //tbd push in response queue
+      queueMessageForAdapter({
+        messageType:AdapterMessageType.INSERT,
+        entityType:AdapterEntityType.ORDER,
+        payload:order
+      })
+
       return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
     }
     //else create a new ask
     else{
       actionCreateAsk(userId, symbol, quantity ,price, orderId);
+
+      queueMessageForAdapter({
+        messageType:AdapterMessageType.INSERT,
+        entityType:AdapterEntityType.ORDER,
+        payload:order
+      })
 
       return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
     }
@@ -155,6 +167,9 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
       //settle makers
       const makerIds = bidInfo.makerIds
       settleOrders(makerIds, userId, stockSymbol, bidInfo.remainingQuantity, orderId)
+
+      //update order
+      updateOrderFilledQuantity(orderId, (quantity - fullFilledQuantity));
 	
       //update orderbook
       incrementUpdateId(stockSymbol);
@@ -175,6 +190,9 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
       //update makers
       const makerIds = bidInfo.makerIds
       settleOrders(makerIds, userId, stockSymbol, (quantity - fullFilledQuantity), orderId);
+
+      //update taker order
+      updateOrderFilledQuantity(orderId, (quantity - fullFilledQuantity));
 
 
 			//reduce quantity in orderbook 
@@ -220,9 +238,21 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 		count--;
 	}
 
-  console.log("ASKKK")
-  console.log(ORDERS)
-  console.log(ACTIVE_ORDERS_INDEX)
+  const order = ORDERS[orderId]!
+  let messageType = AdapterMessageType.INSERT;
+  
+  order.status = identifyOrderStatus(quantity, finalFilledQuantity)!;
+
+  if(order.status === "closed"){
+    deleteOrder(orderId);
+    messageType = AdapterMessageType.APPEND_ONLY
+  }
+
+  queueMessageForAdapter({
+    messageType,
+    entityType:AdapterEntityType.ORDER,
+    payload:order
+  })
 
 	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
 }

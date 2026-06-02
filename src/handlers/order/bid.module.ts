@@ -1,10 +1,11 @@
-import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX, pushOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js";
+import { incrementUpdateId, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX, pushOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js";
 import BALANCE_STORE, { readBalanceStoreUserLockedBalance, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForBidOrder, updateBalanceStoreUserLockedBalance, updateBalanceStoreUserTotalBalance, updateBalanceStoreUserTotalStocks } from "../../memory/balance/balance-store.js";
 import type { OrderBodyType } from "./ask.module.js";
-import { OrderType, type SideSpot } from "@cex/shared";
+import { AdapterEntityType, AdapterMessageType, OrderType, type SideSpot } from "@cex/shared";
 import { actionCreateBid, identifyOrderStatus, settleOrders } from "./utils.js";
 import { OrderSide } from "../../types/order.types.js";
-import { ACTIVE_ORDERS_INDEX, createOrder, deleteOrder, ORDERS } from "../../memory/orders/order.js";
+import { createOrder, deleteOrder, ORDERS, updateOrderFilledQuantity } from "../../memory/orders/order.js";
+import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";
 
 
 export function hanldeOrderSideBid(body:OrderBodyType):any{
@@ -135,6 +136,9 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
       const makerIds = askInfo.makerIds;
       settleOrders(makerIds, userId, stockSymbol , (quantity - fullFilledQuantity), orderId);
 
+      //update order of taker
+      updateOrderFilledQuantity(orderId, (quantity - fullFilledQuantity));
+
       //update orderbook
       incrementUpdateId(stockSymbol);
 
@@ -153,6 +157,9 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
       //settle orders
       const makerIds = askInfo.makerIds;
       settleOrders(makerIds, userId, stockSymbol , (quantity - fullFilledQuantity), orderId);
+
+      //update order of taker
+      updateOrderFilledQuantity(orderId, (quantity - fullFilledQuantity));
 
 			//update order book
 			const previousRemainingQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity;
@@ -189,14 +196,21 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		count++;
 	}
 
-
   const order = ORDERS[orderId]!
+  let messageType = AdapterMessageType.INSERT;
   
   order.status = identifyOrderStatus(quantity, finalFilledQuantity)!;
 
   if(order.status === "closed"){
     deleteOrder(orderId);
+    messageType = AdapterMessageType.APPEND_ONLY
   }
+
+  queueMessageForAdapter({
+    messageType,
+    entityType:AdapterEntityType.ORDER,
+    payload:order
+  })
 
 	/*
 	 IF ASK EXIST WITH PRICE LESS THAN OR EQUAL TO USER GIVEN PRICE , we lock the limit amount which is greater , so in that scenario

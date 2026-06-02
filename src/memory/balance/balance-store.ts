@@ -1,6 +1,35 @@
 import type { BalanceStoreType } from "./balance-type.js";
 
-const BALANCE_STORE : BalanceStoreType = {};
+const BALANCE_STORE : BalanceStoreType = {
+  "11":{
+    balance:{
+      "inr":{
+        total:100000,
+        locked:0
+      },
+    },
+    stock:{
+      "sol":{
+        total:0,
+        locked:0
+      }
+    }
+  },
+  "12":{
+    balance:{
+      "inr":{
+        total:0,
+        locked:0
+      },
+    },
+    stock:{
+      "sol":{
+        total:100,
+        locked:0
+      }
+    }
+  }
+};
 
 
 //@ts-ignore

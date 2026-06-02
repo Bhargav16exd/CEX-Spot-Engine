@@ -1,6 +1,8 @@
+import { AdapterEntityType, AdapterMessageType, MarketType } from "@cex/shared";
 import BALANCE_STORE, { updateBalancesAndStockForAskOrder, updateBalancesAndStockForBidOrder } from "../../memory/balance/balance-store.js";
 import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, pushOrderIdInMakerIds, removeOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js";
 import { deleteOrder, ORDERS, updateOrderFilledQuantity, updateOrderStatus } from "../../memory/orders/order.js";
+import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";
 
 /*
 	FUNCTIONS CREATED AS ACTIONS that are performed on ORDER BOOK
@@ -99,6 +101,33 @@ export const settleOrders = (makerIds:Record<string, Array<string>>, takerId:str
         }
 
         //push fill to queue
+        queueMessageForAdapter({
+          entityType:AdapterEntityType.FILL,
+          messageType:AdapterMessageType.APPEND_ONLY,
+          payload:{
+            makerSide:order?.side,
+            takerSide:takerOrder?.side,
+            makerID:userId,
+            takerID:takerId,
+            makerOrderID:makerOrderId,
+            takerOrderID:takerOrderId,
+            quantity:availableQty,
+            symbol:order?.symbol,
+            market:MarketType.spot,
+            price:order?.price
+          }
+        })
+
+        queueMessageForAdapter({
+          messageType:AdapterMessageType.UPDATE,
+          entityType:AdapterEntityType.ORDER,
+          payload:{
+            orderId:makerOrderId,
+            quantity:order!.quantity,
+            status:"closed"
+          }
+        })
+
         //push order to queue
         deleteOrder(makerOrderId);
 
@@ -115,6 +144,34 @@ export const settleOrders = (makerIds:Record<string, Array<string>>, takerId:str
         //update maker orders qty and status
         updateOrderFilledQuantity(makerOrderId, order!.filledQuantity + (quantity - filledQuantity))
         updateOrderStatus(makerOrderId, "partialfill");
+
+        //push fill to queue
+        queueMessageForAdapter({
+          entityType:AdapterEntityType.FILL,
+          messageType:AdapterMessageType.APPEND_ONLY,
+          payload:{
+            makerSide:order?.side,
+            takerSide:takerOrder?.side,
+            makerID:userId,
+            takerID:takerId,
+            makerOrderID:makerOrderId,
+            takerOrderID:takerOrderId,
+            quantity:(quantity - filledQuantity),
+            symbol:order?.symbol,
+            market:MarketType.spot,
+            price:order?.price
+          }
+        })
+
+        queueMessageForAdapter({
+          messageType:AdapterMessageType.UPDATE,
+          entityType:AdapterEntityType.ORDER,
+          payload:{
+            orderId:makerOrderId,
+            quantity:(quantity - filledQuantity),
+            status:"partialfill"
+          }
+        })
 
         filledQuantity = filledQuantity + (quantity - filledQuantity);
       }

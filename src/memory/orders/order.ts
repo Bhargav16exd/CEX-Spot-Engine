@@ -49,8 +49,7 @@ export const createOrder = (payload: CreateOrderEntityOrderType) => {
     status:"open",
     userId,
     symbol,
-    market:MarketType.spot,
-    createdAt: new Date().toLocaleString()
+    market:MarketType.spot
   }
 
   putUserOrderInIndex(userId, orderId, symbol);

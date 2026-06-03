@@ -139,3 +139,12 @@ const removeUserOrderInIndex = (userId:string, orderId:string, symbol:string) =>
     return true
   }
 }
+
+/* 
+  ------ LOADING BACKUPS IN MEMORY ------
+  ---------------------------------------
+*/
+export const loadOrders = (orderBackup : OrderEntityType, activeOrderIndex : Map<string, Map<string, Array<string>>> ) => {
+  Object.assign(ORDERS, orderBackup);
+  Object.assign(ACTIVE_ORDERS_INDEX, activeOrderIndex);
+}

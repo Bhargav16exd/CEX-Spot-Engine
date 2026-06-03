@@ -1,35 +1,6 @@
 import type { BalanceStoreType } from "./balance-type.js";
 
-const BALANCE_STORE : BalanceStoreType = {
-  "11":{
-    balance:{
-      "inr":{
-        total:100000,
-        locked:0
-      },
-    },
-    stock:{
-      "sol":{
-        total:0,
-        locked:0
-      }
-    }
-  },
-  "12":{
-    balance:{
-      "inr":{
-        total:0,
-        locked:0
-      },
-    },
-    stock:{
-      "sol":{
-        total:100,
-        locked:0
-      }
-    }
-  }
-};
+const BALANCE_STORE : BalanceStoreType = {};
 
 
 //@ts-ignore
@@ -207,5 +178,13 @@ export const handle_GET_USER_BALANCE_Request = (payload:any) => {
   }
 }
 
+/* 
+  ------ LOADING BACKUPS IN MEMORY ------
+  ---------------------------------------
+*/
+
+export const loadBalances = (backup : BalanceStoreType) => {
+  Object.assign(BALANCE_STORE, backup);
+}
 
 export default BALANCE_STORE;

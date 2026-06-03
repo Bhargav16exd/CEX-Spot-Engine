@@ -83,3 +83,13 @@ export const handleCreateOrderEntityRequest = (payload:any) => {
 export const incrementUpdateId = (symbol:string) => {
   ORDERBOOK_STORE[symbol]!.updateId! = ORDERBOOK_STORE[symbol]?.updateId! + 1 
 }
+
+/* 
+  ------ LOADING BACKUPS IN MEMORY ------
+  ---------------------------------------
+*/
+
+export const loadOrderbook = (orderbookBackup : OrderbookStoreType, orderbookIndexBackups : OrderbookIndexStoreType) => {
+  Object.assign(ORDERBOOK_STORE, orderbookBackup);
+  Object.assign(ORDERBOOK_STORE_INDEX, orderbookIndexBackups);
+}

@@ -2,11 +2,18 @@ import type { EngineRequestType, EngineResponseType } from "@cex/shared";
 import { connectRedis, publisher, subscriber } from "./queue/queue-client.js";
 import engineRequestHandler from "./request-handler/request-hanlder.js";
 import dotenv from "dotenv"
+import { pingMinIO } from "./backup-handler/minio-client.js";
+import { loadBackups, startBackups } from "./backup-handler/minio-uploader.js";
 
 dotenv.config()
 
 //connect redis
 connectRedis();
+pingMinIO();
+
+loadBackups().finally(()=>{
+  startBackups();
+})
 
 const ENGINE_REQUEST_QUEUE = `spot-engine-request-queue`;
 

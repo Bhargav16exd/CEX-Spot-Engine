@@ -2,7 +2,7 @@ import { EngineCommandEnum, type EngineRequestType } from "@cex/shared";
 import { hanldeOrderSideAsk } from "../handlers/order/ask.module.js";
 import { hanldeOrderSideBid } from "../handlers/order/bid.module.js";
 import { handle_GET_USER_BALANCE_Request, handle_INIT_USER_BALANCE_Request, handle_UPDATE_USER_BALANCE_Request } from "../memory/balance/balance-store.js";
-import { handleCreateOrderEntityRequest} from "../memory/orderbook/orderbook-store.js";
+import { handle_GET_DEPTH_Request, handleCreateOrderEntityRequest} from "../memory/orderbook/orderbook-store.js";
 import { OrderSide } from "../types/order.types.js";
 
 
@@ -41,6 +41,10 @@ function engineRequestHandler(request:EngineRequestType){
         return hanldeOrderSideBid(request.payload as any);
       }
       
+    }
+
+    if(messageType == EngineCommandEnum.GET_DEPTH){
+      return handle_GET_DEPTH_Request(request.payload as any);
     }
 
 

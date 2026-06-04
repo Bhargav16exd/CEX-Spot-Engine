@@ -33,22 +33,44 @@ export const updateBalanceStoreUserLockedBalance = (userId:string, value:number)
 
 // ----- STOCK READ ----
 export const readBalanceStoreUserTotalStocks = (userId:string, stockSymbol:string) => {
-    return BALANCE_STORE[userId]?.stock[stockSymbol]?.total!
+   if(!BALANCE_STORE[userId]!.stock[stockSymbol]){
+    BALANCE_STORE[userId]!.stock[stockSymbol] = {
+      total:0,
+      locked:0
+    }
+  }
+  return BALANCE_STORE[userId]?.stock[stockSymbol].total
 }
 export const readBalanceStoreUserLockedStocks = (userId:string, stockSymbol:string) => {
-    return BALANCE_STORE[userId]?.stock[stockSymbol]?.locked!
+  if(!BALANCE_STORE[userId]!.stock[stockSymbol]){
+    BALANCE_STORE[userId]!.stock[stockSymbol] = {
+      total:0,
+      locked:0
+    }
+  }
+  return BALANCE_STORE[userId]?.stock[stockSymbol].locked
 }
 // ----- STOCK READ ----
 
 // ----- STOCK UPDATE ----
 export const updateBalanceStoreUserTotalStocks = (userId:string, stockSymbol:string, value:number) => {
-    //@ts-ignore
-    BALANCE_STORE[userId].stock[stockSymbol].total = value
+  if(!BALANCE_STORE[userId]!.stock[stockSymbol]){
+    BALANCE_STORE[userId]!.stock[stockSymbol] = {
+      total:0,
+      locked:0
+    }
+  }
+  BALANCE_STORE[userId]!.stock[stockSymbol].total = value
 }
 
 export const updateBalanceStoreUserLockedStocks = (userId:string, stockSymbol:string, value:number) => {
-    //@ts-ignore
-    BALANCE_STORE[userId].stock[stockSymbol].locked = value;
+   if(!BALANCE_STORE[userId]!.stock[stockSymbol]){
+    BALANCE_STORE[userId]!.stock[stockSymbol] = {
+      total:0,
+      locked:0
+    }
+  }
+    BALANCE_STORE[userId]!.stock[stockSymbol].locked = value;
 }
 
 export const updateBalancesAndStockForAskOrder = (stockSymbol:string, takerId:string, makerId:string, quantity:number , price:number) => {
@@ -153,6 +175,13 @@ export const handle_UPDATE_USER_BALANCE_Request = (payload:any) =>{
   }
 
   updateBalanceStoreUserTotalBalance(id, userBalance + balance);
+
+  BALANCE_STORE[id]!.stock = {
+    "sol" :{
+      total:1000000,
+      locked:0
+    }
+  }
 
   return {
     balance:readBalanceStoreUserTotalBalance(id)

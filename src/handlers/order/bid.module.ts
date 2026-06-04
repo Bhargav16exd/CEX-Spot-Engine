@@ -18,7 +18,7 @@ export function hanldeOrderSideBid(body:OrderBodyType):any{
 
 	const userAvailableBalance = readBalanceStoreUserTotalBalance(userId)! - readBalanceStoreUserLockedBalance(userId)!
 
-	if(!userAvailableBalance){
+	if(userAvailableBalance === undefined){
     throw new Error("Internal Server Error");
 	}
 
@@ -74,14 +74,32 @@ const hanldeOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
       //increment updateId 
       incrementUpdateId(symbol);
 
-      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+      queueMessageForAdapter({
+        messageType:AdapterMessageType.INSERT,
+        entityType:AdapterEntityType.ORDER,
+        payload:order
+      })
+
+      return {
+        totalQuantity:quantity,
+        fillQuantity:0
+      };
     }
     //if there exist no bid then create one
     else{
 
       actionCreateBid(userId, symbol, quantity, price, orderId);
 
-      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+      queueMessageForAdapter({
+        messageType:AdapterMessageType.INSERT,
+        entityType:AdapterEntityType.ORDER,
+        payload:order
+      })
+
+      return {
+        totalQuantity:quantity,
+        fillQuantity:0
+      };
     }
   }
 
@@ -169,6 +187,7 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		}
 
 		//update fullfilled quantity
+    finalFilledQuantity = finalFilledQuantity + askInfo.remainingQuantity;
 		fullFilledQuantity = fullFilledQuantity + askInfo.remainingQuantity;
 		totalCostSpent = totalCostSpent + (askInfo.remainingQuantity * price);
 
@@ -225,7 +244,10 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		count--;
   }
 
-	return {orderbook:ORDERBOOK_STORE[stockSymbol], balance:BALANCE_STORE};
+  return {
+    totalQuantity:quantity,
+    fillQuantity:finalFilledQuantity
+  };
 }
 
 const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {

@@ -3,20 +3,9 @@ import type { OrderbookIndexStoreType, OrderbookStoreType } from "./orderbook-ty
 
 // export const ORDERBOOK_STORE:OrderbookStoreType = {};
 
-export const ORDERBOOK_STORE: OrderbookStoreType = {
-	sol: {
-    updateId:0,
-		ask:{},
-		bid:{}
-}
-};
+export const ORDERBOOK_STORE: OrderbookStoreType = {};
 
-export const ORDERBOOK_STORE_INDEX: OrderbookIndexStoreType= {
-	sol:{
-		ask:[],
-		bid:[]
-	}
-};
+export const ORDERBOOK_STORE_INDEX: OrderbookIndexStoreType= {};
 
 /*
   ------- ORDERBOOK MODFIERS ------
@@ -92,4 +81,21 @@ export const incrementUpdateId = (symbol:string) => {
 export const loadOrderbook = (orderbookBackup : OrderbookStoreType, orderbookIndexBackups : OrderbookIndexStoreType) => {
   Object.assign(ORDERBOOK_STORE, orderbookBackup);
   Object.assign(ORDERBOOK_STORE_INDEX, orderbookIndexBackups);
+}
+
+/* 
+  ------ QUEUE REQUEST HANDLERS ------
+  ------------------------------------
+*/
+
+export const handle_GET_DEPTH_Request = (payload:any):any => {
+  const { stockSymbol } = payload;
+  if(!ORDERBOOK_STORE[stockSymbol]){
+    throw new Error("Stock Does Not Exist In Orderbook")
+  }
+  return {
+    updateId:ORDERBOOK_STORE[stockSymbol].updateId,
+    orderbook:ORDERBOOK_STORE[stockSymbol],
+    orderbookIndex:ORDERBOOK_STORE_INDEX[stockSymbol],
+  }
 }

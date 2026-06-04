@@ -30,11 +30,8 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 	//userAvailableStocks - these are the stocks that can be used further
 	const userAvailableStock = readBalanceStoreUserTotalStocks(userId, stockSymbol)! - readBalanceStoreUserLockedStocks(userId, stockSymbol)!
 
-	if(userAvailableStock == 0){
-		//tbd
-		//user owned stocks are not found in memory 
-		//refresh memory
-		//retry and throw error
+	if(userAvailableStock === undefined){
+    throw new Error("Internal Server Error");
 	}
   
 	//if user own quantity is less than order throw error
@@ -44,8 +41,7 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 	}
 
 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].stock[stockSymbol]){
-		//tbd
-		return
+    throw("Internal Server Error");
 	}
 
 
@@ -101,7 +97,10 @@ const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
         payload:order
       })
 
-      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+      return {
+        totalQuantity:quantity,
+        fillQuantity:0
+      }
     }
     //else create a new ask
     else{
@@ -112,8 +111,11 @@ const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
         entityType:AdapterEntityType.ORDER,
         payload:order
       })
-
-      return {orderbook:ORDERBOOK_STORE[symbol],balance:BALANCE_STORE};
+      
+      return {
+        totalQuantity:quantity,
+        fillQuantity:0
+      };
     }
   }
 
@@ -254,7 +256,10 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
     payload:order
   })
 
-	return {orderbook:ORDERBOOK_STORE[stockSymbol],balance:BALANCE_STORE};
+  return {
+    totalQuantity:quantity,
+    fillQuantity:finalFilledQuantity
+  };
 }
 
 const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {

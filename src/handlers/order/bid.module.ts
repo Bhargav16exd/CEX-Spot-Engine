@@ -6,6 +6,7 @@ import { actionCreateBid, identifyOrderStatus, settleOrders } from "./utils.js";
 import { OrderSide } from "../../types/order.types.js";
 import { createOrder, deleteOrder, ORDERS, updateOrderFilledQuantity } from "../../memory/orders/order.js";
 import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";
+import { pushDirtyPrices } from "../../memory/dirty-prices/dirty-prices.js";
 
 
 export function hanldeOrderSideBid(body:OrderBodyType):any{
@@ -80,6 +81,7 @@ const hanldeOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
         payload:order
       })
 
+      pushDirtyPrices(symbol, price);
       return {
         totalQuantity:quantity,
         fillQuantity:0
@@ -96,6 +98,7 @@ const hanldeOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
         payload:order
       })
 
+      pushDirtyPrices(symbol, price);
       return {
         totalQuantity:quantity,
         fillQuantity:0
@@ -130,6 +133,7 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 		*/
 		if(price > userPrice && quantity > fullFilledQuantity){
 			const remainingStockToBuy = (quantity - fullFilledQuantity);
+      pushDirtyPrices(stockSymbol, price);
 			actionCreateBid(userId, stockSymbol, remainingStockToBuy, userPrice, orderId);
 			break;
 		}
@@ -164,6 +168,7 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 			delete ORDERBOOK_STORE[stockSymbol].ask[price];
 
       count++;
+      pushDirtyPrices(stockSymbol, price);
 			break;
 		}
 
@@ -183,6 +188,7 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 			const previousRemainingQuantity = ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity;
 			ORDERBOOK_STORE[stockSymbol].ask[price].remainingQuantity = previousRemainingQuantity - (quantity - fullFilledQuantity);
 
+      pushDirtyPrices(stockSymbol, price);
 			break;
 		}
 
@@ -212,6 +218,7 @@ const handlePriceAvailableForOrderTypeLimit = (userId:string, stockSymbol:string
 			actionCreateBid(userId, stockSymbol, remainingStockToBuy, userPrice, orderId);
 		}
 
+    pushDirtyPrices(stockSymbol, price);
 		count++;
 	}
 

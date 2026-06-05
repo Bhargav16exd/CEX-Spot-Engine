@@ -4,12 +4,14 @@ import engineRequestHandler from "./request-handler/request-hanlder.js";
 import dotenv from "dotenv"
 import { pingMinIO } from "./backup-handler/minio-client.js";
 import { loadBackups, startBackups } from "./backup-handler/minio-uploader.js";
+import { publishDirtyPrices } from "./handlers/order/delta.handler.js";
 
 dotenv.config()
 
 //connect redis
 connectRedis();
 pingMinIO();
+publishDirtyPrices();
 
 loadBackups().finally(()=>{
   startBackups();

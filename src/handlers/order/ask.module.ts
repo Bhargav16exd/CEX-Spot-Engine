@@ -4,6 +4,7 @@ import { AdapterEntityType, AdapterMessageType, OrderType, type SideSpot } from 
 import { actionCreateAsk, identifyOrderStatus, settleOrders } from "./utils.js";
 import { ACTIVE_ORDERS_INDEX, createOrder, deleteOrder, ORDERS, updateOrderFilledQuantity } from "../../memory/orders/order.js";
 import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";
+import { pushDirtyPrices } from "../../memory/dirty-prices/dirty-prices.js";
 
 export type OrderBodyType = {
 	userId:string,
@@ -62,7 +63,7 @@ const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
 	}
 
   //before starting order - lock all the stocks that are required for order fullfillment
-  const takerPreviousLockedStocks = readBalanceStoreUserLockedStocks(userId, symbol);
+  const takerPreviousLockedStocks = readBalanceStoreUserLockedStocks(userId, symbol)!;
   updateBalanceStoreUserLockedStocks(userId, symbol, (takerPreviousLockedStocks + quantity));
 
   const order = createOrder({userId, symbol, side, type, price, quantity});
@@ -97,6 +98,8 @@ const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
         payload:order
       })
 
+      pushDirtyPrices(symbol, price);
+
       return {
         totalQuantity:quantity,
         fillQuantity:0
@@ -112,6 +115,8 @@ const handleOrderTypeLimit = (userId:string, symbol:string, side:SideSpot, type:
         payload:order
       })
       
+      pushDirtyPrices(symbol, price);
+
       return {
         totalQuantity:quantity,
         fillQuantity:0
@@ -146,6 +151,7 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 		const price = ORDERBOOK_STORE_INDEX[stockSymbol].bid[i]!;
 
 		if(price < userPrice && fullFilledQuantity != quantity){
+      pushDirtyPrices(stockSymbol, price);
 			actionCreateAsk(userId, stockSymbol, (quantity - fullFilledQuantity) ,userPrice, orderId);
 			break;
 		}
@@ -179,6 +185,7 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
       //add entry in db for fills
 			delete ORDERBOOK_STORE[stockSymbol].bid[price];
 	
+      pushDirtyPrices(stockSymbol, price);
 			count++;
 			break;
 		}
@@ -202,6 +209,7 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 			const previousRemainingQuantity = ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity
 			ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity = previousRemainingQuantity - (quantity - fullFilledQuantity)
 
+      pushDirtyPrices(stockSymbol, price);
 			break;
 		}
 
@@ -232,6 +240,7 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
 			actionCreateAsk(userId, stockSymbol, remainingStocksToSell, userPrice, orderId);
 		}
 
+    pushDirtyPrices(stockSymbol, price);
 		count++;
 	}
 

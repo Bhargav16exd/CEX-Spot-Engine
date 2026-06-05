@@ -140,11 +140,60 @@ const removeUserOrderInIndex = (userId:string, orderId:string, symbol:string) =>
   }
 }
 
+const getUserActiveOrdersPaginated = (userId:string, symbol:string, offset:number, count:number) => {
+
+
+  const userOrders = ACTIVE_ORDERS_INDEX.get(userId);
+
+  if(!userOrders){
+    return [];
+  }
+  
+  const symbolOrders = userOrders.get(symbol);
+
+  if(!symbolOrders){
+    return []
+  }
+
+  let activeOrders = [];
+  let counter = 0;
+
+  for(let i = offset ; i < symbolOrders.length && counter < count ; i++ , counter++){
+    const id = symbolOrders[i]!;
+    activeOrders.push(ORDERS[id]);
+  }
+
+  return activeOrders; 
+}
+
 /* 
   ------ LOADING BACKUPS IN MEMORY ------
   ---------------------------------------
 */
 export const loadOrders = (orderBackup : OrderEntityType, activeOrderIndex : Map<string, Map<string, Array<string>>> ) => {
   Object.assign(ORDERS, orderBackup);
-  Object.assign(ACTIVE_ORDERS_INDEX, activeOrderIndex);
+
+  for(const [userId, symbolMap] of activeOrderIndex.entries()){
+    ACTIVE_ORDERS_INDEX.set(userId, 
+      new Map( [...symbolMap.entries()].map(([symbol, orderIds])=>[
+        symbol,
+        [...orderIds]
+      ]))
+    )
+  }
+}
+
+/* 
+  ------ QUEUE REQUEST HANDLERS ------
+  ------------------------------------
+*/
+export const handle_GET_OPEN_ORDERS_Request = (payload:any) => {
+  const { id, symbol, offset, count } = payload;
+  const numOffset = Number(offset);
+  const numCount = Number(count);
+
+  if(!id){
+    throw new Error("Invalid Input");
+  }
+  return getUserActiveOrdersPaginated(id, symbol, numOffset, numCount);
 }

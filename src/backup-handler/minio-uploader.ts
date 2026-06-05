@@ -36,13 +36,22 @@ export const backupServerState = async () =>{
 
 const writeStateIntoFile = async () => {
 
+  const serializedActiveOrderIndex = Object.fromEntries(
+    Array.from(ACTIVE_ORDERS_INDEX.entries()).map(
+      ([symbol, userMap]) => [
+        symbol,
+        Object.fromEntries(userMap)
+      ]
+    )
+  );
+
   try {
     const data = {
       ORDERBOOK_STORE,
       ORDERBOOK_STORE_INDEX,
       BALANCE_STORE,
       ORDERS,
-      ACTIVE_ORDERS_INDEX,
+      ACTIVE_ORDER_INDEX:serializedActiveOrderIndex,
       updatedAt: Date.now(),
     };
   
@@ -66,9 +75,22 @@ export const loadBackups = async () =>{
     
     const parsedBackup  = JSON.parse(jsonStringBackupData) as BackupTypes;
 
+    const activeOrderIndex = new Map(
+      Object.entries(parsedBackup.ACTIVE_ORDER_INDEX).map(
+        ([symbol, userMap]) => [
+          symbol,
+          new Map(
+            Object.entries(
+              userMap as Record<string, string[]>
+            )
+          )
+        ]
+      )
+    );
+      
     loadBalances(parsedBackup.BALANCE_STORE);
     loadOrderbook(parsedBackup.ORDERBOOK_STORE, parsedBackup.ORDERBOOK_STORE_INDEX);
-    loadOrders(parsedBackup.ORDERS, parsedBackup.ACTIVE_ORDER_INDEX);
+    loadOrders(parsedBackup.ORDERS, activeOrderIndex);
     
     await fs.unlink(DOWNLOAD_LOCAL_STATE_FILE);
 

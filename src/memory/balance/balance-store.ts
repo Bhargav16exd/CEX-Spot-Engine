@@ -1,3 +1,4 @@
+import { ORDERBOOK_STORE } from "../orderbook/orderbook-store.js";
 import type { BalanceStoreType } from "./balance-type.js";
 
 const BALANCE_STORE : BalanceStoreType = {};
@@ -205,6 +206,47 @@ export const handle_GET_USER_BALANCE_Request = (payload:any) => {
   return {
     balance: (totalBalance - lockedBalance)
   }
+}
+
+export const handle_UPDATE_USER_STOCK_Request = (payload:any):any => {
+  const {symbol, quantity, userId} = payload
+
+  if(!ORDERBOOK_STORE[symbol]){
+    throw Error("Invalid Stock");
+  }
+
+  if(!BALANCE_STORE[userId]?.stock[symbol]){
+    BALANCE_STORE[userId]!.stock[symbol] = {
+      total:quantity,
+      locked:0
+    }
+    return BALANCE_STORE[userId]!.stock[symbol];
+  }
+
+  BALANCE_STORE[userId].stock[symbol]!.total = readBalanceStoreUserTotalStocks(userId, symbol)! + quantity;
+  return BALANCE_STORE[userId]!.stock[symbol];
+}
+
+export const handle_GET_USER_STOCK_QUANTITY_Request = (payload:any) : any => {
+  const {symbol, userId} = payload;
+
+  if(!ORDERBOOK_STORE[symbol]){
+    throw Error("Invalid Symbol");
+  }
+
+  if(!BALANCE_STORE[userId]){
+    throw Error("Invalid User Id");
+  }
+
+  if(!BALANCE_STORE[userId].stock[symbol]){
+    BALANCE_STORE[userId].stock[symbol] = {
+      total:0,
+      locked:0
+    }
+    return BALANCE_STORE[userId].stock[symbol]
+  }
+
+  return BALANCE_STORE[userId].stock[symbol]
 }
 
 /* 

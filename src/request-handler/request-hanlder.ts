@@ -1,7 +1,7 @@
 import { EngineCommandEnum, type EngineRequestType } from "@cex/shared";
 import { hanldeOrderSideAsk } from "../handlers/order/ask.module.js";
 import { hanldeOrderSideBid } from "../handlers/order/bid.module.js";
-import { handle_GET_USER_BALANCE_Request, handle_INIT_USER_BALANCE_Request, handle_UPDATE_USER_BALANCE_Request } from "../memory/balance/balance-store.js";
+import { handle_GET_USER_BALANCE_Request, handle_GET_USER_STOCK_QUANTITY_Request, handle_INIT_USER_BALANCE_Request, handle_UPDATE_USER_BALANCE_Request, handle_UPDATE_USER_STOCK_Request } from "../memory/balance/balance-store.js";
 import { handle_GET_DEPTH_Request, handleCreateOrderEntityRequest} from "../memory/orderbook/orderbook-store.js";
 import { OrderSide } from "../types/order.types.js";
 import { handle_GET_OPEN_ORDERS_Request } from "../memory/orders/order.js";
@@ -26,6 +26,14 @@ function engineRequestHandler(request:EngineRequestType){
 
     if(messageType === EngineCommandEnum.GET_USER_BALANCE){
       return handle_GET_USER_BALANCE_Request(request.payload);
+    }
+
+    if(messageType === EngineCommandEnum.UPDATE_USER_STOCK){
+      return handle_UPDATE_USER_STOCK_Request(request.payload);
+    }
+
+    if(messageType === EngineCommandEnum.GET_USER_STOCK_QUANTITY){
+      return handle_GET_USER_STOCK_QUANTITY_Request(request.payload);
     }
 
     /*

@@ -5,13 +5,21 @@ import type { BackupTypes } from "./backup.types.js";
 import { loadOrderbook, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX } from "../memory/orderbook/orderbook-store.js";
 import BALANCE_STORE, { loadBalances } from "../memory/balance/balance-store.js";
 import { ACTIVE_ORDERS_INDEX, loadOrders, ORDERS } from "../memory/orders/order.js";
+import dotenv from "dotenv"
 
+dotenv.config()
+
+let src = "/src/"
+
+if(process.env.ENV === "PROD"){
+  src="/"
+}
 
 const BUCKET_NAME = "centralized-exchange-bucket"
 const FILE_NAME = "spot-state.json";
 
-const UPLOAD_LOCAL_STATE_FILE = path.join(`${process.cwd()}/src/backup/upload/`, "spot-state.json");
-const DOWNLOAD_LOCAL_STATE_FILE = path.join(`${process.cwd()}/src/backup/download/`, "spot-state.json");
+const UPLOAD_LOCAL_STATE_FILE = path.join(`${process.cwd()}${src}backup/upload/`, "spot-state.json");
+const DOWNLOAD_LOCAL_STATE_FILE = path.join(`${process.cwd()}${src}backup/download/`, "spot-state.json");
 
 
 export const backupServerState = async () =>{

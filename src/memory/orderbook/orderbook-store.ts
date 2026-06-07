@@ -1,4 +1,4 @@
-import { AdapterEntityType, AdapterMessageType, type SideSpot } from "@cex/shared";
+import { AdapterEntityType, AdapterMessageType, type SideSpot } from "@bhargav16exdd/cex";
 import type { OrderbookIndexStoreType, OrderbookStoreType } from "./orderbook-type.js";
 import { ACTIVE_ORDERS_INDEX, ORDERS } from "../orders/order.js";
 import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";

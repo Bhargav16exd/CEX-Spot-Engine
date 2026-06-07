@@ -1,4 +1,4 @@
-import type { EngineRequestType, EngineResponseType } from "@cex/shared";
+import type { EngineRequestType, EngineResponseType } from "@bhargav16exdd/cex";
 import { connectRedis, publisher, subscriber } from "./queue/queue-client.js";
 import engineRequestHandler from "./request-handler/request-hanlder.js";
 import dotenv from "dotenv"
@@ -30,6 +30,7 @@ for(;;){
 	
 	if(!entity) continue;
 
+  //@ts-ignore
 	const parsedRequest = JSON.parse(entity.element) as EngineRequestType;
 
 	try {

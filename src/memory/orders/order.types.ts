@@ -1,4 +1,4 @@
-import type { OrderType, SideSpot } from "@cex/shared"
+import type { OrderType, SideSpot } from "@bhargav16exdd/cex"
 
 export interface CreateOrderEntityOrderType {
   side:  SideSpot,

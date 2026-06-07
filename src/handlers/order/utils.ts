@@ -1,4 +1,4 @@
-import { AdapterEntityType, AdapterMessageType, MarketType } from "@cex/shared";
+import { AdapterEntityType, AdapterMessageType, MarketType } from "@bhargav16exdd/cex";
 import BALANCE_STORE, { updateBalancesAndStockForAskOrder, updateBalancesAndStockForBidOrder } from "../../memory/balance/balance-store.js";
 import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, pushOrderIdInMakerIds, removeOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js";
 import { deleteOrder, ORDERS, updateOrderFilledQuantity, updateOrderStatus } from "../../memory/orders/order.js";

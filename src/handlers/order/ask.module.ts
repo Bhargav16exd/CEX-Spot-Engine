@@ -1,6 +1,6 @@
 import { addPriceToOrderBookIndex, incrementUpdateId, ORDERBOOK_STORE, ORDERBOOK_STORE_INDEX, pushOrderIdInMakerIds } from "../../memory/orderbook/orderbook-store.js"
 import BALANCE_STORE, { readBalanceStoreUserLockedStocks, readBalanceStoreUserTotalBalance, readBalanceStoreUserTotalStocks, updateBalancesAndStockForAskOrder, updateBalanceStoreUserLockedStocks } from "../../memory/balance/balance-store.js";
-import { AdapterEntityType, AdapterMessageType, OrderType, type SideSpot } from "@cex/shared";
+import { AdapterEntityType, AdapterMessageType, OrderType, type SideSpot } from "@bhargav16exdd/cex";
 import { actionCreateAsk, identifyOrderStatus, settleOrders } from "./utils.js";
 import { ACTIVE_ORDERS_INDEX, createOrder, deleteOrder, ORDERS, updateOrderFilledQuantity } from "../../memory/orders/order.js";
 import { queueMessageForAdapter } from "../../queue/db-publisher-client.js";
@@ -51,7 +51,7 @@ export function hanldeOrderSideAsk(body:OrderBodyType):any{
 	}
 
 	if(type == OrderType.market){
-		return handleOrderTypeMarket(userId, stockSymbol, side, type , price, quantity);
+		// return handleOrderTypeMarket(userId, stockSymbol, side, type , price, quantity);
 	}
 }
 
@@ -271,105 +271,105 @@ const handlePriceAvailableForOrder = (userId:string, stockSymbol:string, side:st
   };
 }
 
-const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
+// const handleOrderTypeMarket = (userId:string, stockSymbol:string, side:string, type:string, userPrice:number, quantity:number) => {
 
-	if(!ORDERBOOK_STORE_INDEX[stockSymbol]) return;
-	if(!ORDERBOOK_STORE[stockSymbol]) return;
-	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"] || !BALANCE_STORE[userId].stock[stockSymbol]) return
+// 	if(!ORDERBOOK_STORE_INDEX[stockSymbol]) return;
+// 	if(!ORDERBOOK_STORE[stockSymbol]) return;
+// 	if(!BALANCE_STORE[userId] || !BALANCE_STORE[userId].balance["inr"] || !BALANCE_STORE[userId].stock[stockSymbol]) return
 	
-	let fullFilledQuantity = 0;
-	let count = 0;
+// 	let fullFilledQuantity = 0;
+// 	let count = 0;
 
-	for(let i = ORDERBOOK_STORE_INDEX[stockSymbol].bid.length - 1 ; i >= 0  ; i--){
+// 	for(let i = ORDERBOOK_STORE_INDEX[stockSymbol].bid.length - 1 ; i >= 0  ; i--){
 
-		if(fullFilledQuantity == quantity){
-			break;
-		}
+// 		if(fullFilledQuantity == quantity){
+// 			break;
+// 		}
 
-		//get highest price bid from index 
-		const price = ORDERBOOK_STORE_INDEX[stockSymbol].bid[i]!;
+// 		//get highest price bid from index 
+// 		const price = ORDERBOOK_STORE_INDEX[stockSymbol].bid[i]!;
 
-		if(!ORDERBOOK_STORE[stockSymbol].bid[price]) return;
+// 		if(!ORDERBOOK_STORE[stockSymbol].bid[price]) return;
 
-		//based on price recived -> fetch full order details
-		const bidInfo = ORDERBOOK_STORE[stockSymbol].bid[price]!
+// 		//based on price recived -> fetch full order details
+// 		const bidInfo = ORDERBOOK_STORE[stockSymbol].bid[price]!
 
-		if(bidInfo.remainingQuantity == (quantity - fullFilledQuantity)){
+// 		if(bidInfo.remainingQuantity == (quantity - fullFilledQuantity)){
 			
-			//add bid quantity 
-			fullFilledQuantity = fullFilledQuantity + bidInfo.remainingQuantity
+// 			//add bid quantity 
+// 			fullFilledQuantity = fullFilledQuantity + bidInfo.remainingQuantity
 
-			//delete that bid from order book
-			delete ORDERBOOK_STORE[stockSymbol].bid[price]
+// 			//delete that bid from order book
+// 			delete ORDERBOOK_STORE[stockSymbol].bid[price]
 
-			//now as order is proccessed read user stock and balance && update user stock and balance
-			//read
-			const userBalanceTotal = readBalanceStoreUserTotalBalance(userId)
-			const userStocksTotal = readBalanceStoreUserTotalStocks(userId, stockSymbol)!
+// 			//now as order is proccessed read user stock and balance && update user stock and balance
+// 			//read
+// 			const userBalanceTotal = readBalanceStoreUserTotalBalance(userId)
+// 			const userStocksTotal = readBalanceStoreUserTotalStocks(userId, stockSymbol)!
 
-			//update
-			BALANCE_STORE[userId].balance["inr"].total = userBalanceTotal + (price * bidInfo.remainingQuantity);
-			BALANCE_STORE[userId].stock[stockSymbol].total = userStocksTotal - bidInfo.remainingQuantity;
-			count++;
-			break;
-		}
+// 			//update
+// 			BALANCE_STORE[userId].balance["inr"].total = userBalanceTotal + (price * bidInfo.remainingQuantity);
+// 			BALANCE_STORE[userId].stock[stockSymbol].total = userStocksTotal - bidInfo.remainingQuantity;
+// 			count++;
+// 			break;
+// 		}
 
-		if(bidInfo.remainingQuantity > (quantity - fullFilledQuantity)){
-			//update store
-			ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity = bidInfo.remainingQuantity - (quantity - fullFilledQuantity);
+// 		if(bidInfo.remainingQuantity > (quantity - fullFilledQuantity)){
+// 			//update store
+// 			ORDERBOOK_STORE[stockSymbol].bid[price].remainingQuantity = bidInfo.remainingQuantity - (quantity - fullFilledQuantity);
 
-			//add order 
-			ORDERBOOK_STORE[stockSymbol].bid[price].orders.push({
-				userId,
-				quantity:bidInfo.totalQuantity,
-				filledQuantity:(quantity - fullFilledQuantity),
-				orderId:"1",
-				createdAt: new Date().toISOString()
-			})
+// 			//add order 
+// 			ORDERBOOK_STORE[stockSymbol].bid[price].orders.push({
+// 				userId,
+// 				quantity:bidInfo.totalQuantity,
+// 				filledQuantity:(quantity - fullFilledQuantity),
+// 				orderId:"1",
+// 				createdAt: new Date().toISOString()
+// 			})
 
-			//read and update balances and stock of user
+// 			//read and update balances and stock of user
 
-			//read
-			const userBalanceTotal = readBalanceStoreUserTotalBalance(userId);
-			const userStocksTotal = readBalanceStoreUserTotalStocks(userId, stockSymbol)!;
+// 			//read
+// 			const userBalanceTotal = readBalanceStoreUserTotalBalance(userId);
+// 			const userStocksTotal = readBalanceStoreUserTotalStocks(userId, stockSymbol)!;
 
-			//update
-			BALANCE_STORE[userId].balance["inr"].total = userBalanceTotal + (price * (quantity - fullFilledQuantity));
-			BALANCE_STORE[userId].stock[stockSymbol].total = userStocksTotal - (quantity - fullFilledQuantity);
+// 			//update
+// 			BALANCE_STORE[userId].balance["inr"].total = userBalanceTotal + (price * (quantity - fullFilledQuantity));
+// 			BALANCE_STORE[userId].stock[stockSymbol].total = userStocksTotal - (quantity - fullFilledQuantity);
 
-			break;
-		}
+// 			break;
+// 		}
 
-		/*
-			SECTION HANLDES THAT , IF A SINGLE BID IS NOT ABLE TO FULL FILL THEN BELOW HAPPENS
-		*/
-		//add bid quantity 
-		fullFilledQuantity = fullFilledQuantity + bidInfo.remainingQuantity
+// 		/*
+// 			SECTION HANLDES THAT , IF A SINGLE BID IS NOT ABLE TO FULL FILL THEN BELOW HAPPENS
+// 		*/
+// 		//add bid quantity 
+// 		fullFilledQuantity = fullFilledQuantity + bidInfo.remainingQuantity
 
-		//delete that bid from order book
-		delete ORDERBOOK_STORE[stockSymbol].bid[price]
+// 		//delete that bid from order book
+// 		delete ORDERBOOK_STORE[stockSymbol].bid[price]
 
-		//now as order is proccessed read user stock and balance && update user stock and balance
-		//read
-		const userBalanceTotal = readBalanceStoreUserTotalBalance(userId)
-		const userStocksTotal = readBalanceStoreUserTotalStocks(userId, stockSymbol)!
+// 		//now as order is proccessed read user stock and balance && update user stock and balance
+// 		//read
+// 		const userBalanceTotal = readBalanceStoreUserTotalBalance(userId)
+// 		const userStocksTotal = readBalanceStoreUserTotalStocks(userId, stockSymbol)!
 
-		//update
-		BALANCE_STORE[userId].balance["inr"].total = userBalanceTotal + (price * bidInfo.remainingQuantity);
-		BALANCE_STORE[userId].stock[stockSymbol].total = userStocksTotal - bidInfo.remainingQuantity;
-		count ++;
-	}
+// 		//update
+// 		BALANCE_STORE[userId].balance["inr"].total = userBalanceTotal + (price * bidInfo.remainingQuantity);
+// 		BALANCE_STORE[userId].stock[stockSymbol].total = userStocksTotal - bidInfo.remainingQuantity;
+// 		count ++;
+// 	}
 
-	while(count > 0){
-		ORDERBOOK_STORE_INDEX[stockSymbol].bid.pop();
-		count --;
-	}
+// 	while(count > 0){
+// 		ORDERBOOK_STORE_INDEX[stockSymbol].bid.pop();
+// 		count --;
+// 	}
 
-	if(count == ORDERBOOK_STORE_INDEX[stockSymbol].bid.length){
-		//tbd push in response queue
-		//return res.json(new HttpSuccessResponse(200, true, `Pratial Order Completed [Remaining Amount] : ${quantity-fullFilledQuantity}`, ORDERBOOK_STORE[stockSymbol]));
-	}
+// 	if(count == ORDERBOOK_STORE_INDEX[stockSymbol].bid.length){
+// 		//tbd push in response queue
+// 		//return res.json(new HttpSuccessResponse(200, true, `Pratial Order Completed [Remaining Amount] : ${quantity-fullFilledQuantity}`, ORDERBOOK_STORE[stockSymbol]));
+// 	}
 
-	//tbd push in response queue
-	//return res.json(new HttpSuccessResponse(200, true, "Order Placed", ORDERBOOK_STORE[stockSymbol]));
-}
+// 	//tbd push in response queue
+// 	//return res.json(new HttpSuccessResponse(200, true, "Order Placed", ORDERBOOK_STORE[stockSymbol]));
+// }

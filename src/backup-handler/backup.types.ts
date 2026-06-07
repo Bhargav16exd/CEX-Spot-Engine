@@ -1,5 +1,5 @@
 
-import type { OrderEntityType } from "@cex/shared";
+import type { OrderEntityType } from "@bhargav16exdd/cex";
 import type { BalanceStoreType } from "../memory/balance/balance-type.js";
 import type { OrderbookIndexStoreType, OrderbookStoreType } from "../memory/orderbook/orderbook-type.js";
 

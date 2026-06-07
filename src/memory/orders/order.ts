@@ -1,4 +1,4 @@
-import { MarketType, type OrderEntityType, type OrderStatus } from "@cex/shared";
+import { MarketType, type OrderEntityType, type OrderStatus } from "@bhargav16exdd/cex";
 import type { CreateOrderEntityOrderType } from "./order.types.js";
 import { randomUUID } from "crypto";
 

@@ -5,9 +5,10 @@ dotenv.config()
 
 const MINIO_ACCESS_KEY = process.env.MINIO_ACCESS_KEY || ""
 const MINIO_SECRET_KEY = process.env.MINIO_SECRET_KEY || ""
+const MINIO_ENDPOINT = process.env.MINIO_ENDPOINT || ""
 
 const minIOClient = new Minio.Client({
-  endPoint:"localhost",
+  endPoint:MINIO_ENDPOINT,
   port:9000,
   accessKey:MINIO_ACCESS_KEY,
   secretKey:MINIO_SECRET_KEY,

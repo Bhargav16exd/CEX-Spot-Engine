@@ -1,4 +1,4 @@
-import type { AdapterRequestType } from "@cex/shared";
+import type { AdapterRequestType } from "@bhargav16exdd/cex";
 import { createClient } from "redis";
 
 const REDIS_URL = process.env.REDIS_URL || "";
